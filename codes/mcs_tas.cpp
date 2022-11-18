@@ -7,8 +7,12 @@
 #include <stdlib.h>
 using namespace std;
 
-pthread_mutex_t mutext_lock;
+pthread_mutex_t mutext_lock1;
+pthread_mutex_t mutext_lock2;
+pthread_mutex_t mutext_lock3;
 
+std::atomic<int> lock_flag1{0};
+std::atomic<int> lock_flag2{0};
 
 typedef struct qnode {
   struct qnode *next;
@@ -23,56 +27,68 @@ void print_ll(qnode * root){
     root = root->next;
     i++;
   }
-  cout<<"\n";
+  //cout<<"\n";
 }
 
 
 int val =0;
-std::atomic<qnode*> *L = new std::atomic<qnode*>;
+qnode *L = new qnode;
 
-void lock (std::atomic<qnode*> *L, qnode *I) {
+void my_lock (qnode *L, qnode *I) {
    
     I->next = NULL;
-    qnode *predecessor = new qnode;
-    predecessor = I;   
     //cout<<"before predecessor = "<<predecessor<<", I = "<<I<<"\n";
-    predecessor = L->exchange(predecessor);
-    //cout<<"after predecessor = "<<predecessor<<", I = "<<I<<"\n";
+
+    //while (lock_flag1.exchange(1));
+    qnode *predecessor = new qnode;
+    pthread_mutex_lock(&mutext_lock1);
+
+    cout<<"before I = "<<I<<", L = "<<L<<"\n";
+
+    //predecessor = I;
+    predecessor = L;   
+    L = I;
+    //lock_flag1.exchange(0);   
+
+    cout<<"after predecessor = "<<predecessor<<", L = "<<L<<"\n\n";
+    pthread_mutex_unlock(&mutext_lock1);
+
     //std::atomic_compare_exchange_strong(L, &temp_qnode, predecessor/* std::memory_order_release, std::memory_order_relaxed*/);
     if (predecessor!=NULL) {
-        //std::cout<<"waiting for predecessor to make me free : )\n";
         I->locked = true;
         predecessor->next = I;
         while (I->locked)
-        ;//std::cout<<"waiting to get freed :)\n";
+          std::cout<<"waiting for predecessor to make me free : )\n";
     }
+    //cout<<"Got the lock!\n";
+  free(predecessor);
 }
 
-void unlock (std::atomic<qnode*> *L, qnode *I) {
+void my_unlock (qnode *L, qnode *I) {
 
-  if(I->next){
-    I->next->locked = false;
-  }
-  else{
-    qnode *old_tail = NULL;
-    //cout<<"old_tail = "<<old_tail<<", *L = "<<*L<<"\n";
-    old_tail = L->exchange(old_tail);
-    //cout<<"old_tail = "<<old_tail<<", *L = "<<*L<<"\n";
-    if(old_tail == I)
-      return;
+    if(!I->next){  
+      pthread_mutex_lock(&mutext_lock2);
+      //while (lock_flag2.exchange(1));
+      cout<<"before I = "<<I<<", L = "<<L<<"\n";
+      if(L == I){
+        L = NULL;
+      }
+      cout<<"after I = "<<I<<", L = "<<L<<"\n\n";
 
-    qnode *userper = old_tail;
-    //cout<<"userper = "<<userper<<", *L = "<<*L<<"\n";
-    userper = L->exchange(userper);
-    while((I->next) == NULL){
+      pthread_mutex_unlock(&mutext_lock2);
+
+      //lock_flag2.exchange(0);    
+      if(L == NULL){
+        //cout<<"Unlocking.. no one to signal to.\n";
+        return;
+      }
+    }
+    
+    while(!I->next){
+        cout<<"Unlock? waiting for someone to be added\n";
         ;//std::cout<<"waiting to get the new node I added to my next :)\n";
     }
-    if(userper)
-      userper->next = I->next;
-    else
-      I->next->locked = false;
-  }
-  
+    I->next->locked = false;
     
     //std::cout<<"["<<std::this_thread::get_id()<<"] Going into unlock\n";
    /*if (!I->next){
@@ -89,21 +105,19 @@ void unlock (std::atomic<qnode*> *L, qnode *I) {
 }
 
 
-
 void *lock_example(void *arg) {
   //std::cout<<" Thread = "<<std::this_thread::get_id()<<"\n";
-  for(int i=0;i<20;i++) {
-    qnode* I = new qnode;
-    lock(L, I);
+  qnode* I = new qnode;
+  for(int i=0;i<200;i++) {
+    my_lock(L, I);
     val++;
-    unlock(L, I);
-    free(I);
-    pthread_mutex_lock(&mutext_lock);
-    print_ll(*L);
-    pthread_mutex_unlock(&mutext_lock);
-    
-    
+    pthread_mutex_lock(&mutext_lock3);
+    print_ll(L);
+    pthread_mutex_unlock(&mutext_lock3);
+    my_unlock(L, I);
+
   }
+  free(I);
 
   return NULL;
 }
@@ -114,9 +128,8 @@ int main(){
         printf("\n mutex init has failed\n");
         return 1;
     }*/
-
-  *L=NULL;
-  int NUM_THREADS=100;
+  L = NULL; 
+  int NUM_THREADS=10;
   pthread_t threads[NUM_THREADS];
   for (int i = 0; i < NUM_THREADS; i++) {
     pthread_create( &threads[i], NULL, &lock_example,NULL);

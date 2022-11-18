@@ -9,14 +9,14 @@ using namespace std;
 
 //#define TEST_TEST_AND_SET
 #define TEST_AND_SET
-//pthread_mutex_t mutext_lock;
 
 std::atomic<int> lock_flag{0};
 
-//std::atomic<int> val{0};
 int val = 0;
-void increase_counter()
-{
+
+
+
+void my_lock(){
     #ifdef TEST_TEST_AND_SET
     do{
         while(lock_flag.load()){;}
@@ -25,31 +25,29 @@ void increase_counter()
     #ifdef TEST_AND_SET
     while (lock_flag.exchange(1));
     #endif
-    val++;
+}
+
+void my_unlock(){
     lock_flag.exchange(0);
+}
+
+void increase_counter()
+{
+    val++;
 }
 
 
 void *lock_example(void *arg) {
-  //std::cout<<" Thread = "<<std::this_thread::get_id()<<"\n";
   for(int i=0;i<2000;i++) {
+    my_lock();
     increase_counter();
-    /*pthread_mutex_lock(&mutext_lock);
-    print_ll(*L);
-    pthread_mutex_unlock(&mutext_lock);
-    */
-    
+    my_unlock();
   }
 
   return NULL;
 }
 
 int main(){
-
-    /*if (pthread_mutex_init(&mutext_lock, NULL) != 0) {
-        printf("\n mutex init has failed\n");
-        return 1;
-    }*/
 
   int NUM_THREADS=1024;
   pthread_t threads[NUM_THREADS];

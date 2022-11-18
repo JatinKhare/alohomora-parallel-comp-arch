@@ -7,26 +7,29 @@
 #include <stdlib.h>
 using namespace std;
 
-//pthread_mutex_t mutext_lock;
 int s = 0;
 
-std::atomic<bool> lock_flag{false};
+std::atomic<int> lock_flag{0};
+
 int val = 0;
 
+
 void my_lock(){
-  bool expected = false;
-  while (!lock_flag.compare_exchange_strong(expected, true)) {
-        expected = false;
-  }
+    do{
+        while(lock_flag.load()){;}
+    }while ((lock_flag.fetch_add(1)!=0));
+
 }
 
 void my_unlock(){
-  lock_flag.store(false);
+  lock_flag.store(0);
 }
+
 void increase_counter()
 {
-    val++;
+  val++;
 }
+
 
 void *lock_example(void *arg) {
   for(int i=0;i<2000;i++) {
