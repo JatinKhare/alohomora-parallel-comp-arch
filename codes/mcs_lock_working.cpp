@@ -50,7 +50,7 @@ void lock (std::atomic<qnode*> *L, qnode *I) {
 
 void unlock (std::atomic<qnode*> *L, qnode *I) {
 
-  /*if(I->next){
+  if(I->next){
     I->next->locked = false;
   }
   else{
@@ -72,9 +72,9 @@ void unlock (std::atomic<qnode*> *L, qnode *I) {
     else
       I->next->locked = false;
   }
-    */
+    
     //std::cout<<"["<<std::this_thread::get_id()<<"] Going into unlock\n";
-   if (!I->next){
+   /*if (!I->next){
        if(std::atomic_compare_exchange_strong(L, &I, NULL))
           return;
     }
@@ -84,14 +84,14 @@ void unlock (std::atomic<qnode*> *L, qnode *I) {
         ;
     } 
     I->next->locked = false;
-    
+    */
 }
 
 
 
 void *lock_example(void *arg) {
   //std::cout<<" Thread = "<<std::this_thread::get_id()<<"\n";
-  for(int i=0;i<512;i++) {
+  for(int i=0;i<4;i++) {
     qnode* I = new qnode;
     lock(L, I);
     val++;
