@@ -1,0 +1,172 @@
+// This program shows off setting thread affinity
+// By: Nick from CoffeeBeforeArch
+
+#include <benchmark/benchmark.h>
+#include <pthread.h>
+
+#include <atomic>
+#include <cassert>
+#include <thread>
+
+// Simple Spinlock
+// Now uses ticket system for fairness
+typedef struct qnode {
+  struct qnode *next;
+  bool locked;
+} qnode;
+
+std::atomic<qnode*> *L = new std::atomic<qnode*>;
+class Spinlock {
+ 	public:
+void lock (std::atomic<qnode*> *L, qnode *I) {
+   
+    I->next = NULL;
+    qnode *predecessor = new qnode;
+    predecessor = I;   
+    //cout<<"before predecessor = "<<predecessor<<", I = "<<I<<"\n";
+    predecessor = L->exchange(predecessor);
+    //cout<<"after predecessor = "<<predecessor<<", I = "<<I<<"\n";
+    //std::atomic_compare_exchange_strong(L, &temp_qnode, predecessor/* std::memory_order_release, std::memory_order_relaxed*/);
+    if (predecessor!=NULL) {
+        //std::cout<<"waiting for predecessor to make me free : )\n";
+        I->locked = true;
+        predecessor->next = I;
+        while (I->locked)
+        ;//std::cout<<"waiting to get freed :)\n";
+    }
+}
+
+void unlock (std::atomic<qnode*> *L, qnode *I) {
+
+  if(I->next){
+    I->next->locked = false;
+  }
+  else{
+    qnode *old_tail = NULL;
+    //cout<<"old_tail = "<<old_tail<<", *L = "<<*L<<"\n";
+    old_tail = L->exchange(old_tail);
+    //cout<<"old_tail = "<<old_tail<<", *L = "<<*L<<"\n";
+    if(old_tail == I)
+      return;
+
+    qnode *userper = old_tail;
+    //cout<<"userper = "<<userper<<", *L = "<<*L<<"\n";
+    userper = L->exchange(userper);
+    /*cout<<"userper = "<<userper<<", *L = "<<*L<<"\n";*/
+    while((I->next) == NULL){
+        ;//std::cout<<"waiting to get the new node I added to my next :)\n";
+    }
+    if(userper)
+      userper->next = I->next;
+    else
+      I->next->locked = false;
+  }
+    
+    //std::cout<<"["<<std::this_thread::get_id()<<"] Going into unlock\n";
+/*    if (!I->next){
+       if(std::atomic_compare_exchange_strong(L, &I, NULL))
+          return;
+    }
+
+    while (!I->next){
+      std::cout<<"here..\n";
+        ;
+    } 
+    I->next->locked = false;
+    */
+}
+};
+
+// Increment val once each time the lock is acquired
+void inc(Spinlock &t, std::int64_t &val) {
+	for(int i=0;i<1000;i++) {
+		qnode* I = new qnode;
+		t.lock(L, I);
+		val++;
+		t.unlock(L, I);
+		free(I);
+	}
+}
+
+//  Aligned type
+//  Allows us to keep to atomics from sitting on the same cache line
+struct alignas(64) AlignedAtomic {
+  AlignedAtomic(int v) { val = v; }
+  std::int64_t val;
+};
+
+void os_scheduler() {
+  AlignedAtomic a{0};
+  AlignedAtomic b{0};
+  *L = NULL;
+  Spinlock s1;
+  // Create four threads and use lambda to launch work
+  std::thread t1([&]() { inc(s1,a.val); });
+  std::thread t2([&]() { inc(s1,a.val); });
+  std::thread t3([&]() { inc(s1,b.val); });
+  std::thread t4([&]() { inc(s1,b.val); });
+
+  // Join the threads
+  t1.join();
+  t2.join();
+  t3.join();
+  t4.join();
+}
+
+// Data sharing benchmark w/ OS scheduling
+static void osScheduling(benchmark::State& s) {
+  while (s.KeepRunning()) {
+    os_scheduler();
+  }
+}
+BENCHMARK(osScheduling)->UseRealTime()->Unit(benchmark::kMillisecond);
+
+void thread_affinity() {
+  AlignedAtomic a{0};
+  AlignedAtomic b{0};
+  *L = NULL;
+  Spinlock s1;
+  // Create cpu sets for threads 0,1 and 2,3
+  cpu_set_t cpu_set_1;
+  cpu_set_t cpu_set_2;
+
+  // Zero them out
+  CPU_ZERO(&cpu_set_1);
+  CPU_ZERO(&cpu_set_2);
+
+  // And set the CPU cores we want to pin the threads too
+  CPU_SET(0, &cpu_set_1);
+  CPU_SET(1, &cpu_set_2);
+
+  // Create thread 0 and 1, and pin them to core 0
+  std::thread t0([&]() { inc(s1,a.val); });
+  assert(pthread_setaffinity_np(t0.native_handle(), sizeof(cpu_set_t),
+                                &cpu_set_1) == 0);
+  std::thread t1([&]() { inc(s1,a.val); });
+  assert(pthread_setaffinity_np(t1.native_handle(), sizeof(cpu_set_t),
+                                &cpu_set_1) == 0);
+
+  // Create thread 1 and 2, and pin them to core 1
+  std::thread t2([&]() { inc(s1,b.val); });
+  assert(pthread_setaffinity_np(t2.native_handle(), sizeof(cpu_set_t),
+                                &cpu_set_2) == 0);
+  std::thread t3([&]() { inc(s1,b.val); });
+  assert(pthread_setaffinity_np(t3.native_handle(), sizeof(cpu_set_t),
+                                &cpu_set_2) == 0);
+
+  // Join the threads
+  t0.join();
+  t1.join();
+  t2.join();
+  t3.join();
+}
+
+// Data sharing benchmark w/ manual scheduling
+static void threadAffinity(benchmark::State& s) {
+  while (s.KeepRunning()) {
+    thread_affinity();
+  }
+}
+BENCHMARK(threadAffinity)->UseRealTime()->Unit(benchmark::kMillisecond);
+
+BENCHMARK_MAIN();
