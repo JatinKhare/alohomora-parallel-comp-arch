@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <thread>
 #include <vector>
+#include "../include/header.h"
 int incref(std::atomic<int>* r)
 {
     int v;
@@ -41,7 +42,7 @@ class ticket_lock {
 void inc(ticket_lock &t, std::int64_t &val) {
   for (int i = 0; i < 100000; i++) {
     t.lock();
-    val++;
+    push_pop_func(i);
     t.unlock();
   }
 }

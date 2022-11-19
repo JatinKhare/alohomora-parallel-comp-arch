@@ -4,50 +4,50 @@
 #include <cstdint>
 #include <thread>
 #include <vector>
-int incref(std::atomic<int>* r)
-{
-    int v;
-    do {
-        v = r->load();
-    } while (!std::atomic_compare_exchange_strong(r, &v, v+1));
-    return v;
-}
-class ticket_lock {
+#include "../include/header.h"
+// Simple Spinlock
+// Now uses ticket system for fairness
+class Spinlock {
  private:
-  //What is the current thread's ticket number 
-  std::atomic<int> my_ticket_num{0};
-  //Currently which request is being served 
-  volatile int curr_serving{0};
-
+  // Lock is now two counters:
+  //  1.) The latest place taken in line
+  //  2.) Which number is currently being served
+  std::atomic<std::uint16_t> line{0};
+  // Needs to avoid the compiler putting this in a register!
+  volatile std::uint16_t serving{0};
+  //std::uint16_t serving{0};
  public:
   // Locking mechanism
   void lock() {
-    //Get in the ticket line 
-    auto place = incref(&my_ticket_num);//Converts to xadd instruction (atomic function)
-	//Service your request if you are at the place which is currently being served 	
-        while (curr_serving != place)
+    // Get the latest place in line (and increment the value)
+    auto place = line.fetch_add(1);
+
+    // Wait until our number is "called"
+    while (serving != place)
       ;
   }
 
   // Unlocking mechanism
-  // Increment curr_serving number to pass the lock
+  // Increment serving number to pass the lock
+  // No need for an atomic! The thread with the lock is the only one that
+  // accesses this variable!
   void unlock() {
     asm volatile("" : : : "memory");
-    curr_serving = curr_serving + 1;
+    serving = serving + 1;
   }
 };
 
 // Increment val once each time the lock is acquired
-void inc(ticket_lock &t, std::int64_t &val) {
+void inc(Spinlock &s, std::int64_t &val) {
   for (int i = 0; i < 100000; i++) {
-    t.lock();
-    val++;
-    t.unlock();
+    s.lock();
+    push_pop_func(i);
+    s.unlock();
   }
 }
 
-// Small Benchmark (Google benchmark runnning mechanism)
-static void ticket_lock_benchmark(benchmark::State &s) {
+// Small Benchmark
+static void ticket_lock(benchmark::State &s) {
   // Sweep over a range of threads
   auto num_threads = s.range(0);
 
@@ -58,7 +58,7 @@ static void ticket_lock_benchmark(benchmark::State &s) {
   std::vector<std::thread> threads;
   threads.reserve(num_threads);
 
-  ticket_lock sl;
+  Spinlock sl;
 
   // Timing loop
   for (auto _ : s) {
@@ -70,7 +70,7 @@ static void ticket_lock_benchmark(benchmark::State &s) {
     threads.clear();
   }
 }
-BENCHMARK(ticket_lock_benchmark)
+BENCHMARK(ticket_lock)
     ->RangeMultiplier(2)
     ->Range(1, std::thread::hardware_concurrency())
     ->UseRealTime()

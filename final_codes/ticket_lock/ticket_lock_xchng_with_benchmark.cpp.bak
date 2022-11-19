@@ -18,22 +18,27 @@ class ticket_lock {
   std::atomic<int> my_ticket_num{0};
   //Currently which request is being served 
   volatile int curr_serving{0};
+  int v;
+  std::atomic<int>* r;
 
  public:
   // Locking mechanism
   void lock() {
     //Get in the ticket line 
-    auto place = incref(&my_ticket_num);//Converts to xadd instruction (atomic function)
+    //auto place = incref(&my_ticket_num);//Converts to xadd instruction (atomic function)
 	//Service your request if you are at the place which is currently being served 	
-        while (curr_serving != place)
-      ;
+    r= &my_ticket_num;
+    do {
+        v = r->load();
+    } while (!std::atomic_compare_exchange_strong(r, &v, v+1));
   }
 
   // Unlocking mechanism
   // Increment curr_serving number to pass the lock
   void unlock() {
-    asm volatile("" : : : "memory");
-    curr_serving = curr_serving + 1;
+    //asm volatile("" : : : "memory");
+    //curr_serving = curr_serving + 1;
+	v=v+1;
   }
 };
 
