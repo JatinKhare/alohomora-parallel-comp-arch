@@ -40,6 +40,7 @@ void my_lock (qnode *L, qnode *I) {
     qnode *predecessor = new qnode;
     while (lock_flag1.exchange(1)) {;}
     //pthread_mutex_lock(&mutext_lock1);
+
     //cout<<"before I = "<<I<<", L = "<<L<<"\n";
 
     //predecessor = I;
