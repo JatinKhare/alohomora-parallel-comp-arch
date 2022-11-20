@@ -6,7 +6,7 @@
 #include<assert.h>
 #include<benchmark/benchmark.h>
 //getconf LEVEL1_DCACHE_LINESIZE on command line to get the l1d cache line size
-
+#include "../include/header.h"
 #define CACHELINE_SIZE 64
 int val=0;
 int loop_count= 100000;
@@ -68,7 +68,7 @@ void *lock_example(void *and_lock) {
   for(int i=0;i<loop_count;i++) {
     
     and_lock_->my_lock();
-    val++;
+    push_pop_func(i);
     and_lock_->my_unlock();
         
   }
@@ -96,7 +96,7 @@ static void anderson_lock_benchmark(benchmark::State &s) {
     // Join threads
     for (auto &thread : threads) thread.join();
     threads.clear();
-    assert(loop_count*num_threads == val); 
+    //assert(loop_count*num_threads == val); 
   }
     
 }
