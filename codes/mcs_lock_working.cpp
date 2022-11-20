@@ -7,12 +7,13 @@
 #include <stdlib.h>
 using namespace std;
 
-pthread_mutex_t mutext_lock;
+pthread_mutex_t mutext_lock1;
 
+//#define DEBUG
 
 typedef struct qnode {
   struct qnode *next;
-  bool locked;
+  volatile bool locked;
 } qnode;
 
 
@@ -26,11 +27,11 @@ void print_ll(qnode * root){
   cout<<"\n";
 }
 
-
+int came_here = 0;
 int val =0;
 std::atomic<qnode*> *L = new std::atomic<qnode*>;
 
-void lock (std::atomic<qnode*> *L, qnode *I) {
+void lock (qnode *I) {
    
     I->next = NULL;
     qnode *predecessor = new qnode;
@@ -39,18 +40,50 @@ void lock (std::atomic<qnode*> *L, qnode *I) {
     predecessor = L->exchange(predecessor);
     //cout<<"after predecessor = "<<predecessor<<", I = "<<I<<"\n";
     //std::atomic_compare_exchange_strong(L, &temp_qnode, predecessor/* std::memory_order_release, std::memory_order_relaxed*/);
+
     if (predecessor!=NULL) {
-        //std::cout<<"waiting for predecessor to make me free : )\n";
+        came_here++;
         I->locked = true;
         predecessor->next = I;
-        while (I->locked)
-        ;//std::cout<<"waiting to get freed :)\n";
+        bool wait;
+        int j = 0;
+        do{
+          #ifdef DEBUG
+          if(j==0){
+          pthread_mutex_lock(&mutext_lock1);
+          std::cout<<"I am stuck = "<<predecessor<<"\n";
+          pthread_mutex_unlock(&mutext_lock1);
+          }
+          #endif
+          wait = I->locked;
+          j++;
+        }while(!wait);
     }
+    else{          
+    #ifdef DEBUG
+      pthread_mutex_lock(&mutext_lock1);
+      std::cout<<"getting my lock directly = "<<predecessor<<"\n";
+      pthread_mutex_unlock(&mutext_lock1);
+     #endif
+  }
+  if(predecessor!=NULL){
+    #ifdef DEBUG
+        pthread_mutex_lock(&mutext_lock1);
+        std::cout<<"getting lock  after waiting = "<<predecessor<<"\n";
+        pthread_mutex_unlock(&mutext_lock1);
+    #endif
+    }
+
 }
 
-void unlock (std::atomic<qnode*> *L, qnode *I) {
-
+void unlock (qnode *I) {
+  qnode * next_;
   if(I->next){
+    #ifdef DEBUG
+    pthread_mutex_lock(&mutext_lock1);
+    std::cout<<"releasing my lock directly = "<<I<<"\n";
+    pthread_mutex_unlock(&mutext_lock1);
+    #endif
     I->next->locked = false;
   }
   else{
@@ -64,9 +97,16 @@ void unlock (std::atomic<qnode*> *L, qnode *I) {
     qnode *userper = old_tail;
     //cout<<"userper = "<<userper<<", *L = "<<*L<<"\n";
     userper = L->exchange(userper);
-    while((I->next) == NULL){
-        ;//std::cout<<"waiting to get the new node I added to my next :)\n";
-    }
+    do{
+      #ifdef DEBUG
+      pthread_mutex_lock(&mutext_lock1);
+      std::cout<<"waiting to release my lock = "<<I<<"\n";
+      pthread_mutex_unlock(&mutext_lock1);
+      #endif
+      next_ = I->next;
+    }while(!next_);
+
+
     if(userper)
       userper->next = I->next;
     else
@@ -92,29 +132,27 @@ void unlock (std::atomic<qnode*> *L, qnode *I) {
 
 void *lock_example(void *arg) {
   //std::cout<<" Thread = "<<std::this_thread::get_id()<<"\n";
-  for(int i=0;i<20;i++) {
-    qnode* I = new qnode;
-    lock(L, I);
-    val++;
-    unlock(L, I);
-    free(I);
-    pthread_mutex_lock(&mutext_lock);
-    print_ll(*L);
-    pthread_mutex_unlock(&mutext_lock);
-    
-    
+  
+    for(int i=0;i<500;i++) {
+      qnode* I = new qnode;
+      lock(I);
+      val++;
+      asm volatile("" : : : "memory");
+      unlock(I);
+      free(I);
   }
+
+
+
 
   return NULL;
 }
 
 int main(){
-
-    /*if (pthread_mutex_init(&mutext_lock, NULL) != 0) {
-        printf("\n mutex init has failed\n");
-        return 1;
-    }*/
-
+  if (pthread_mutex_init(&mutext_lock1, NULL) != 0) {
+      printf("\n mutex init has failed\n");
+      return 1;
+  }
   *L=NULL;
   int NUM_THREADS=100;
   pthread_t threads[NUM_THREADS];
@@ -125,5 +163,6 @@ int main(){
     pthread_join(threads[i],NULL);
   }
   std::cout<<"counter = "<<val<<"\n";
+  std::cout<<"came_here = "<<came_here<<"\n";
 
 }

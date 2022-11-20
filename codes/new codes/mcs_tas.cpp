@@ -5,131 +5,121 @@
 #include <vector>
 #include <pthread.h>
 #include <stdlib.h>
+#include <xmmintrin.h>
+#include <time.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <unistd.h>
 using namespace std;
 
-pthread_mutex_t mutext_lock1;
-pthread_mutex_t mutext_lock2;
-pthread_mutex_t mutext_lock3;
+pthread_mutex_t mutex_lock1;
+pthread_mutex_t mutex_lock2;
+pthread_mutex_t mutex_lock3;
 
-std::atomic<int> lock_flag1{0};
+std::atomic<bool> lock_flag1{0};
 std::atomic<int> lock_flag2{0};
+std::atomic<int> lock_flag3{0};
 
 typedef struct qnode {
   struct qnode *next;
-  bool locked;
+ volatile bool locked;
 } qnode;
 
-
-void print_ll(qnode * root){
+int came_here1 = 0, came_here2 = 0, came_here3 = 0;
+int val =0;
+ qnode *L = new qnode;
+ qnode* predecessor = new qnode;
+void print_ll( qnode * root){
   int i = 0;
   while(root!=NULL){
-    cout<<"("<<std::this_thread::get_id()<<")"<<root<<"("<<i<<") -> ";
+    cout<</*"("<<std::this_thread::get_id()<<")"<<*/root<<"("<<i<<") -> ";
     root = root->next;
     i++;
   }
-  //cout<<"\n";
+  cout<<"\n";
 }
 
 
-int val =0;
-qnode *L = new qnode;
-
-void my_lock (qnode *L, qnode *I) {
-   
+void my_lock ( qnode *I) {
+  
     I->next = NULL;
-    //cout<<"before predecessor = "<<predecessor<<", I = "<<I<<"\n";
+    
+    while (lock_flag1.exchange(true)){;}
 
-    //while (lock_flag1.exchange(1));
-    qnode *predecessor = new qnode;
-    pthread_mutex_lock(&mutext_lock1);
-
-    cout<<"before I = "<<I<<", L = "<<L<<"\n";
-
-    //predecessor = I;
-    predecessor = L;   
+    qnode *temp = L;
     L = I;
-    //lock_flag1.exchange(0);   
+    predecessor = temp;   
+    //cout<<"predecessor = "<<predecessor<<"\n";
+    //cout<<"L = "<<L<<"\n";
 
-    cout<<"after predecessor = "<<predecessor<<", L = "<<L<<"\n\n";
-    pthread_mutex_unlock(&mutext_lock1);
+    lock_flag1.exchange(false);  
+    
+    if(predecessor == NULL)
+      return;
 
-    //std::atomic_compare_exchange_strong(L, &temp_qnode, predecessor/* std::memory_order_release, std::memory_order_relaxed*/);
-    if (predecessor!=NULL) {
-        I->locked = true;
-        predecessor->next = I;
-        while (I->locked)
-          std::cout<<"waiting for predecessor to make me free : )\n";
+    I->locked = true;
+    predecessor->next = I;
+    while(I->locked){
+      ;//cout<<"I_old_1 = "<<predecessor<<"\n";
     }
-    //cout<<"Got the lock!\n";
-  free(predecessor);
 }
 
-void my_unlock (qnode *L, qnode *I) {
+void my_unlock ( qnode *I) {
 
-    if(!I->next){  
-      pthread_mutex_lock(&mutext_lock2);
-      //while (lock_flag2.exchange(1));
-      cout<<"before I = "<<I<<", L = "<<L<<"\n";
+    volatile qnode *next_;
+
+    if(!(I->next)){  
+
+      while (lock_flag1.exchange(true));
       if(L == I){
         L = NULL;
       }
-      cout<<"after I = "<<I<<", L = "<<L<<"\n\n";
-
-      pthread_mutex_unlock(&mutext_lock2);
-
-      //lock_flag2.exchange(0);    
+      lock_flag1.exchange(false);    
+      
       if(L == NULL){
-        //cout<<"Unlocking.. no one to signal to.\n";
         return;
       }
     }
-    
-    while(!I->next){
-        cout<<"Unlock? waiting for someone to be added\n";
-        ;//std::cout<<"waiting to get the new node I added to my next :)\n";
-    }
-    I->next->locked = false;
-    
-    //std::cout<<"["<<std::this_thread::get_id()<<"] Going into unlock\n";
-   /*if (!I->next){
-       if(std::atomic_compare_exchange_strong(L, &I, NULL))
-          return;
-    }
 
-    while (!I->next){
-      std::cout<<"here..\n";
-        ;
-    } 
+    do {
+        next_ = I->next;
+        ;//cout<<"I_old_2 = "<<I<<"\n";
+    } while (!next_);
+
     I->next->locked = false;
-    */
 }
 
 
 void *lock_example(void *arg) {
-  //std::cout<<" Thread = "<<std::this_thread::get_id()<<"\n";
-  qnode* I = new qnode;
-  for(int i=0;i<200;i++) {
-    my_lock(L, I);
+  for(int i=0;i<100;i++) {
+     qnode* I = new qnode;
+    my_lock(I);
     val++;
-    pthread_mutex_lock(&mutext_lock3);
-    print_ll(L);
-    pthread_mutex_unlock(&mutext_lock3);
-    my_unlock(L, I);
-
+    asm volatile ("" : : : "memory");    
+    my_unlock(I);
+    free((void*)I);
   }
-  free(I);
 
   return NULL;
 }
 
 int main(){
 
-    /*if (pthread_mutex_init(&mutext_lock, NULL) != 0) {
+    if (pthread_mutex_init(&mutex_lock1, NULL) != 0) {
         printf("\n mutex init has failed\n");
         return 1;
-    }*/
+    }
+    if (pthread_mutex_init(&mutex_lock2, NULL) != 0) {
+        printf("\n mutex init has failed\n");
+        return 1;
+    }
+    if (pthread_mutex_init(&mutex_lock3, NULL) != 0) {
+        printf("\n mutex init has failed\n");
+        return 1;
+    }
+
   L = NULL; 
-  int NUM_THREADS=10;
+  int NUM_THREADS=2;
   pthread_t threads[NUM_THREADS];
   for (int i = 0; i < NUM_THREADS; i++) {
     pthread_create( &threads[i], NULL, &lock_example,NULL);
@@ -138,5 +128,9 @@ int main(){
     pthread_join(threads[i],NULL);
   }
   std::cout<<"counter = "<<val<<"\n";
+  //std::cout<<"came_here1 = "<<came_here1<<"\n";
+  //std::cout<<"came_here2 = "<<came_here2<<"\n";
+  //std::cout<<"came_here3 = "<<came_here3<<"\n";
+
 
 }
