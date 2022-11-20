@@ -1,8 +1,3 @@
-
-//Ticket lock implementation with benchmark
-
-#include <benchmark/benchmark.h>
-//MCS lock with benchmark
 #include <benchmark/benchmark.h>
 #include <atomic>
 #include <cstdint>

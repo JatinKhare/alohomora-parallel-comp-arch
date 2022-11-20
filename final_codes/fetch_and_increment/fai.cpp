@@ -7,20 +7,23 @@
 #include <stdlib.h>
 using namespace std;
 
-std::atomic<int> my_ticket_num{0};
-volatile std::uint16_t curr_serving{0};
+int s = 0;
+
+std::atomic<int> lock_flag{0};
 
 int val = 0;
 
-void my_lock() {
-    auto place = my_ticket_num.fetch_add(1);
-    while (curr_serving != place){
-    }
-  }
 
-void my_unlock() {
-    curr_serving = curr_serving + 1;
-  }
+void my_lock(){
+    do{
+        while(lock_flag.load()){;}
+    }while ((lock_flag.fetch_add(1)!=0));
+
+}
+
+void my_unlock(){
+  lock_flag.store(0);
+}
 
 void increase_counter()
 {
@@ -29,7 +32,7 @@ void increase_counter()
 
 
 void *lock_example(void *arg) {
-  for(int i=0;i<1000;i++) {
+  for(int i=0;i<2000;i++) {
     my_lock();
     increase_counter();
     my_unlock();
@@ -40,12 +43,7 @@ void *lock_example(void *arg) {
 
 int main(){
 
-    /*if (pthread_mutex_init(&mutext_lock, NULL) != 0) {
-        printf("\n mutex init has failed\n");
-        return 1;
-    }*/
-
-  int NUM_THREADS=8;
+  int NUM_THREADS=1024;
   pthread_t threads[NUM_THREADS];
   for (int i = 0; i < NUM_THREADS; i++) {
     pthread_create( &threads[i], NULL, &lock_example,NULL);

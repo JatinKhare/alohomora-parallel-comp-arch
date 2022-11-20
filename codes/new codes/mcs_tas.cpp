@@ -36,7 +36,6 @@ void print_ll( qnode * root){
     root = root->next;
     i++;
   }
-  cout<<"\n";
 }
 
 
@@ -79,8 +78,10 @@ void my_unlock ( qnode *I) {
       if(L == NULL){
         return;
       }
-    }
+      //pthread_mutex_unlock(&mutext_lock1);
 
+    }
+    
     do {
         next_ = I->next;
         ;//cout<<"I_old_2 = "<<I<<"\n";
@@ -98,8 +99,6 @@ void *lock_example(void *arg) {
     asm volatile ("" : : : "memory");    
     my_unlock(I);
     free((void*)I);
-  }
-
   return NULL;
 }
 
