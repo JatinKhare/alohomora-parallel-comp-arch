@@ -4,6 +4,22 @@
 #include <cstdint>
 #include <thread>
 #include <vector>
+//#define MEASURE_CONTENTION
+using namespace std;
+std::atomic<int> ticket_queued_total{0};
+std::atomic<int> ticket_acquires{0};
+static inline uint32_t
+sub_abs(const uint32_t a, const uint32_t b)
+{
+  if (a > b)
+    {
+      return a - b;
+    }
+  else
+    {
+      return b - a;
+    }
+}
 int incref(std::atomic<int>* r)
 {
     int v;
@@ -22,11 +38,25 @@ class ticket_lock {
  public:
   // Locking mechanism
   void lock() {
+#ifdef MEASURE_CONTENTION
+  std::uint8_t once = 1;
+  ticket_acquires++;
+#endif
+
     //Get in the ticket line 
     auto place = incref(&my_ticket_num);//Converts to xadd instruction (atomic function)
 	//Service your request if you are at the place which is currently being served 	
         while (curr_serving != place)
-      ;
+		{
+#ifdef MEASURE_CONTENTION
+			if (once)
+			{
+				ticket_queued_total += sub_abs(curr_serving,place);
+				//printf("queue = %d\n",sub_abs(curr_serving,place));
+				once = 0;
+			}
+#endif 
+		}
   }
 
   // Unlocking mechanism
@@ -45,7 +75,20 @@ void inc(ticket_lock &t, std::int64_t &val) {
     t.unlock();
   }
 }
+void
+ticket_print_contention_stats()
+{
+  double avg_q = ticket_queued_total / (double) ticket_acquires;
+  printf("#Acquires: %10llu / #Total queuing: %10llu / Avg. queuing: %.3f\n",
+	 (long long unsigned) ticket_acquires, (long long unsigned) ticket_queued_total, avg_q);
+}
 
+double
+ticket_avg_queue()
+{
+  double avg_q = ticket_queued_total / (double) ticket_acquires;
+  return avg_q;
+}
 // Small Benchmark (Google benchmark runnning mechanism)
 static void ticket_lock_benchmark(benchmark::State &s) {
   // Sweep over a range of threads
@@ -64,12 +107,18 @@ static void ticket_lock_benchmark(benchmark::State &s) {
   for (auto _ : s) {
     for (auto i = 0u; i < num_threads; i++) {
       threads.emplace_back([&] { inc(sl, val); });
+	  
     }
+#ifdef MEASURE_CONTENTION
+	 ticket_print_contention_stats();
+#endif
     // Join threads
     for (auto &thread : threads) thread.join();
     threads.clear();
   }
+ 
 }
+
 BENCHMARK(ticket_lock_benchmark)
     ->RangeMultiplier(2)
     ->Range(1, std::thread::hardware_concurrency())
