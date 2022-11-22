@@ -1,0 +1,284 @@
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    1000000
+RawSize:    110.6 MB (estimated)
+FileSize:   62.9 MB (estimated)
+WARNING: Snappy compression is not enabled
+------------------------------------------------
+
+Before entering in_count: 0
+
+Before entering in_count: 1
+I am going out: 1
+Total inside: 1
+
+Before entering in_count: 2
+I am going out: 2
+Total inside: 1
+
+Before entering in_count: 0
+
+Before entering in_count: 0
+I am going out: 1
+Total inside: 0
+I am going out: 1
+Total inside: 0
+
+Before entering in_count: 1
+
+Before entering in_count: 1
+I am going out: 2
+Total inside: 0
+I am going out: 2
+Total inside: 0
+
+Before entering in_count: 2
+
+Before entering in_count: 2
+I am going out: 3
+Total inside: 0
+I am going out: 3
+Total inside: 0
+
+Before entering in_count: 3
+
+Before entering in_count: 3
+I am going out: 4
+Total inside: 0
+I am going out: 4
+Total inside: 0
+
+Before entering in_count: 4
+
+Before entering in_count: 4
+I am going out: 5
+Total inside: 0
+I am going out: 5
+Total inside: 0
+
+Before entering in_count: 5
+
+Before entering in_count: 5
+I am going out: 6
+Total inside: 0
+I am going out: 6
+Total inside: 0
+
+Before entering in_count: 6
+
+Before entering in_count: 6
+I am going out: 7
+Total inside: 0
+I am going out: 7
+Total inside: 0
+
+Before entering in_count: 7
+
+Before entering in_count: 7
+I am going out: 8
+Total inside: 0
+I am going out: 8
+Total inside: 0
+
+Before entering in_count: 8
+
+Before entering in_count: 8
+I am going out: 9
+Total inside: 0
+I am going out: 9
+Total inside: 0
+
+Before entering in_count: 9
+
+Before entering in_count: 9
+I am going out: 10
+Total inside: 0
+I am going out: 10
+Total inside: 0
+
+Before entering in_count: 10
+
+Before entering in_count: 10
+I am going out: 11
+Total inside: 0
+I am going out: 11
+Total inside: 0
+
+Before entering in_count: 11
+
+Before entering in_count: 11
+I am going out: 12
+Total inside: 0
+I am going out: 12
+Total inside: 0
+
+Before entering in_count: 12
+
+Before entering in_count: 12
+I am going out: 13
+Total inside: 0
+I am going out: 13
+Total inside: 0
+
+Before entering in_count: 13
+
+Before entering in_count: 13
+I am going out: 14
+Total inside: 0
+I am going out: 14
+Total inside: 0
+
+Before entering in_count: 14
+
+Before entering in_count: 14
+I am going out: 15
+Total inside: 0
+I am going out: 15
+Total inside: 0
+
+Before entering in_count: 15
+
+Before entering in_count: 15
+I am going out: 16
+Total inside: 0
+I am going out: 16
+Total inside: 0
+
+Before entering in_count: 16
+
+Before entering in_count: 16
+I am going out: 17
+Total inside: 0
+I am going out: 17
+Total inside: 0
+
+Before entering in_count: 17
+
+Before entering in_count: 17
+I am going out: 18
+Total inside: 0
+I am going out: 18
+Total inside: 0
+
+Before entering in_count: 18
+
+Before entering in_count: 18
+I am going out: 19
+Total inside: 0
+I am going out: 19
+Total inside: 0
+
+Before entering in_count: 19
+
+Before entering in_count: 19
+I am going out: 20
+Total inside: 0
+I am going out: 20
+Total inside: 0
+
+Before entering in_count: 20
+
+Before entering in_count: 20
+I am going out: 21
+Total inside: 0
+I am going out: 21
+Total inside: 0
+
+Before entering in_count: 21
+
+Before entering in_count: 21
+I am going out: 22
+Total inside: 0
+I am going out: 22
+Total inside: 0
+
+Before entering in_count: 22
+
+Before entering in_count: 22
+I am going out: 23
+Total inside: 0
+I am going out: 23
+Total inside: 0
+
+Before entering in_count: 23
+
+Before entering in_count: 23
+I am going out: 24
+Total inside: 0
+I am going out: 24
+Total inside: 0
+
+Before entering in_count: 24
+
+Before entering in_count: 24
+I am going out: 25
+Total inside: 0
+I am going out: 25
+Total inside: 0
+
+Before entering in_count: 25
+
+Before entering in_count: 25
+I am going out: 26
+Total inside: 0
+I am going out: 26
+Total inside: 0
+
+Before entering in_count: 26
+
+Before entering in_count: 26
+I am going out: 27
+Total inside: 0
+I am going out: 27
+Total inside: 0
+
+Before entering in_count: 27
+
+Before entering in_count: 27
+I am going out: 28
+Total inside: 0
+I am going out: 28
+Total inside: 0
+
+Before entering in_count: 28
+
+Before entering in_count: 28
+I am going out: 29
+Total inside: 0
+I am going out: 29
+Total inside: 0
+
+Before entering in_count: 29
+
+Before entering in_count: 29
+I am going out: 30
+Total inside: 0
+I am going out: 30
+Total inside: 0
+
+Before entering in_count: 30
+
+Before entering in_count: 30
+I am going out: 31
+Total inside: 0
+I am going out: 31
+Total inside: 0
+
+Before entering in_count: 31
+
+Before entering in_count: 31
+I am going out: 32
+Total inside: 0
+I am going out: 32
+Total inside: 0
+
+Before entering in_count: 32
+I am going out: 33
+Total inside: 0
+
+Before entering in_count: 33
+I am going out: 34
+Total inside: 0
+I am going out: 3
+Total inside: 0
+fillseq      :       5.828 micros/op;   19.0 MB/s

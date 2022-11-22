@@ -1,0 +1,27 @@
+LevelDB:    version 1.23
+Date:       Mon Nov 21 21:49:04 2022
+CPU:        4 * Intel(R) Core(TM) i5-7200U CPU @ 2.50GHz
+CPUCache:   3072 KB	
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    1000000
+RawSize:    110.6 MB (estimated)
+FileSize:   62.9 MB (estimated)
+WARNING: Snappy compression is not enabled
+------------------------------------------------
+fillseq      :       5.691 micros/op;   19.4 MB/s     
+fillsync     :   36401.082 micros/op;    0.0 MB/s (1000 ops)
+fillrandom   :      16.914 micros/op;    6.5 MB/s     
+overwrite    :      27.357 micros/op;    4.0 MB/s     
+readrandom   :       4.791 micros/op; (864322 of 1000000 found)
+readrandom   :       4.250 micros/op; (864083 of 1000000 found)
+readseq      :       0.192 micros/op;  577.6 MB/s    
+readreverse  :       0.320 micros/op;  346.2 MB/s    
+compact      : 6119905.000 micros/op;
+readrandom   :       1.685 micros/op; (864105 of 1000000 found)
+readseq      :       0.132 micros/op;  835.5 MB/s    
+readreverse  :       0.250 micros/op;  442.6 MB/s    
+fill100K     :    8779.870 micros/op;   10.9 MB/s (1000 ops)
+crc32c       :       1.559 micros/op; 2505.5 MB/s (4K per op)
+snappycomp   :    2372.000 micros/op; (snappy failure)
+snappyuncomp :    2622.000 micros/op; (snappy failure)
