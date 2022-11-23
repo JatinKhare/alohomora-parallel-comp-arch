@@ -109,7 +109,9 @@ static void ticket_lock_benchmark(benchmark::State &s) {
       threads.emplace_back([&] { inc(sl, val); });
 	  
     }
+#ifdef MEASURE_CONTENTION
 	 ticket_print_contention_stats();
+#endif
     // Join threads
     for (auto &thread : threads) thread.join();
     threads.clear();

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <thread>
 #include <vector>
+#include <sched.h>
 //#define MEASURE_CONTENTION
 using namespace std;
 std::atomic<int> ticket_queued_total{0};

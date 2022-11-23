@@ -24,7 +24,9 @@ class Spinlock {
 
     // Wait until our number is "called"
     while (serving != place)
-      ;
+    {
+	sched_yeild();
+    } 
   }
 
   // Unlocking mechanism
