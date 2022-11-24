@@ -8,10 +8,10 @@ read arg2
 if [ $arg2 == 1 ]
 then
   echo "Compiling for ubuntu..."
-  g++  -lpthread -pthread $1.cpp -o $1_ubuntu.o   
+  //g++  -lpthread -pthread $1.cpp -o $1_ubuntu.o   
   
-  #g++ $1.cpp -isystem benchmark/include \
-  #-Lbenchmark/build/src -lbenchmark -lpthread -pthread -o $1_ubuntu.o
+  g++ $1.cpp -isystem benchmark/include \
+  -Lbenchmark/build/src -lbenchmark -lpthread -pthread -o $1_ubuntu.o
 
   objdump -d $1_ubuntu.o > $1_ubuntu.asm
   #vim $arg2_clang.asm

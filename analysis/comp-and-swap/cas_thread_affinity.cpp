@@ -1,6 +1,4 @@
 #include <benchmark/benchmark.h>
-#include <pthread.h>
-#include <atomic>
 #include <cassert>
 #include <thread>
 #include <cstdint>
@@ -11,8 +9,8 @@
 #include <stdlib.h>
 using namespace std;
 
-#define NUM_THREADS 32
-#define CRITICAL_SECTION_SIZE 1
+#define NUM_THREADS 4
+#define CRITICAL_SECTION_SIZE 100
 
 class Spinlock {
 	private:
@@ -86,7 +84,7 @@ void thread_affinity() {
 	AlignedAtomic a{0};
 	AlignedAtomic b{0};
 	Spinlock s1;
-	//int index[4] = {0, 1, 94, 95};//worse case
+	int index[4] = {0, 0, 0, 1};//worse case
 	//int index[4] = {0, 1, 0, 1};//best case
 	//int index[4] = {30, 7, 31, 127};
 	//int index[8] = {0, 1, 30, 31, 66, 67, 94, 97}; //worst arrangement
@@ -96,11 +94,8 @@ void thread_affinity() {
 	for (unsigned i = 0; i < NUM_THREADS; i++) {
 		cpu_set_t cpuset;
 		CPU_ZERO(&cpuset);
-		//CPU_SET(index[i], &cpuset);
-		if(i%2)
-		CPU_SET(1, &cpuset);
-		else
-		CPU_SET(0, &cpuset);
+		CPU_SET(index[i], &cpuset);
+		//CPU_SET(i%2, &cpuset);
 
 		int rc = -1;
 		if(i%2){
