@@ -11,8 +11,8 @@
 #include <stdlib.h>
 using namespace std;
 
-#define NUM_THREADS 4
-#define CRITICAL_SECTION_SIZE 10000
+#define NUM_THREADS 32
+#define CRITICAL_SECTION_SIZE 1
 
 class Spinlock {
 	private:
@@ -86,7 +86,8 @@ void thread_affinity() {
 	AlignedAtomic a{0};
 	AlignedAtomic b{0};
 	Spinlock s1;
-	//int index[4] = {6, 7, 62, 63};//worse case
+	//int index[4] = {0, 1, 94, 95};//worse case
+	//int index[4] = {0, 1, 0, 1};//best case
 	//int index[4] = {30, 7, 31, 127};
 	//int index[8] = {0, 1, 30, 31, 66, 67, 94, 97}; //worst arrangement
 	//int index[8] = {0, 1, 0, 1, 0, 1, 0, 1};	//best arrangement
@@ -96,21 +97,22 @@ void thread_affinity() {
 		cpu_set_t cpuset;
 		CPU_ZERO(&cpuset);
 		//CPU_SET(index[i], &cpuset);
-		CPU_SET(i, &cpuset);
+		if(i%2)
+		CPU_SET(1, &cpuset);
+		else
+		CPU_SET(0, &cpuset);
 
 		int rc = -1;
-		//if(index[i]%2){
 		if(i%2){
 			std::thread t([&]() {inc(s1, a.val); });
-		rc = pthread_setaffinity_np(t.native_handle(),
-			sizeof(cpu_set_t), &cpuset);
+
+		rc = pthread_setaffinity_np(t.native_handle(), sizeof(cpu_set_t), &cpuset);
 		threads.push_back(std::move(t));
 		//threads.emplace_back([&] { inc(s1, a.val); });
 		}
 		else{
 			std::thread t([&]() {inc(s1, b.val); });
-		rc = pthread_setaffinity_np(t.native_handle(),
-				sizeof(cpu_set_t), &cpuset);
+		rc = pthread_setaffinity_np(t.native_handle(), sizeof(cpu_set_t), &cpuset);
 			threads.push_back(std::move(t));
 			//threads.emplace_back([&] { inc(s1, b.val); });
 		}

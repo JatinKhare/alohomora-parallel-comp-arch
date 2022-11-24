@@ -11,30 +11,33 @@
 #include <mutex>
 #include "../include/header.h"
 #include <chrono>
+#include <time.h>
 using namespace std::chrono;
 
-//#define COUNTER
-#define CRITICAL_SECTION_SIZE 10000
+#define COUNTER
+#define CRITICAL_SECTION_SIZE 1000
 
-#define STACK_LIST
+//#define STACK_LIST
 
 #define LOOP_COUNT 10000
 
 //#define ORIGINAL
-//#define BLOCKING_LOCK
+#define BLOCKING_LOCK
 //#define PAUSE_ARM
 //#define PAUSE_x86
-#define SCHED_YIELD
+//#define SCHED_YIELD
 
 #ifdef BLOCKING_LOCK
 	std::condition_variable cvar;
 	std::mutex Mutex;
 #endif
-
 std::atomic<bool> lock_flag{false};
 int val;
-std::vector<std::chrono::milliseconds> starve_count;
-
+//std::vector<std::chrono::milliseconds> starve_count;
+std::chrono::time_point<std::chrono::system_clock> start[128], end_time[128];
+std::chrono::duration<double> elapsed_seconds[128], max_elapsed_seconds[128], max_time;
+//double start_time[128], end_time[128];
+//int thread_counter = 0;
 void my_lock(){
   bool expected = false;
 #ifdef BLOCKING_LOCK
@@ -74,21 +77,22 @@ void increase_counter()
     }
 }
 
-void *lock_example() {
-  for(int i=0;i<LOOP_COUNT;i++) {
-    my_lock();
-    auto start = high_resolution_clock::now();
+void *lock_example(int i) { 
+  for(int j=0;j<LOOP_COUNT;j++) {
+	start[i] = high_resolution_clock::now();
+	my_lock();
+	end_time[i] = high_resolution_clock::now();
 #ifdef STACK_LIST
     push_pop_func(i);
 #endif
+
 #ifdef COUNTER
     increase_counter();
 #endif
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start).count();
-    starve_count.push_back(chrono::milliseconds(duration));
-//    cout<<"duration = "<<duration<<"\n";
-    my_unlock();
+	my_unlock();
+	elapsed_seconds[i] = end_time[i] - start[i];
+	if(elapsed_seconds[i].count() > max_elapsed_seconds[i].count())
+		max_elapsed_seconds[i] = elapsed_seconds[i];
   }
 
   return NULL;
@@ -108,25 +112,29 @@ static void cas_benchmark(benchmark::State &s) {
 	  val = 0;
 	  reset_sum();
     for (auto i = 0u; i < num_threads; i++) {
-      threads.emplace_back([&] { lock_example(); });
+      threads.emplace_back([&] { lock_example(i); });
     }
     // Join threads
     for (auto &thread : threads) thread.join();
     threads.clear();
 #ifdef COUNTER
-    assert(val == LOOP_COUNT*num_threads);
+    for(int i = 0; i<128; i++){
+	    if(max_elapsed_seconds[i].count()>max_time.count())
+		    max_time = max_elapsed_seconds[i];
+    }
+    //cout<<"val = "<<val<<"\n";
+    assert(val == LOOP_COUNT*CRITICAL_SECTION_SIZE*num_threads);
 #endif
 
 #ifdef STACK_LIST
     //cout<<"size_of_SL() = "<<size_of_SL()<<"LOOP_COUNT = "<<LOOP_COUNT/2<<"\n";
     assert(size_of_SL() == num_threads*LOOP_COUNT/2);
 #endif
-    //cout<<"val = "<<val<<"\n";
     auto max_ = -1;
 
     //cout<<"Worse starvation = "<<*max_element(starve_count.begin(), starve_count.end())<<"\n";
   }
-  //sem_destroy(&mutex);
+    cout<<"Maximum wait time = "<<max_time.count()<<"\n";
 }
 BENCHMARK(cas_benchmark)
     ->RangeMultiplier(2)
