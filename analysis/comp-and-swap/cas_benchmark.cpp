@@ -10,9 +10,11 @@
 #include <condition_variable>
 #include <mutex>
 #include "../include/header.h"
+#include <chrono>
+using namespace std::chrono;
 
 //#define COUNTER
-#define CRITICAL_SECTION_SIZE 1
+#define CRITICAL_SECTION_SIZE 10000
 
 #define STACK_LIST
 
@@ -24,17 +26,14 @@
 //#define PAUSE_x86
 #define SCHED_YIELD
 
-
-
 #ifdef BLOCKING_LOCK
 	std::condition_variable cvar;
 	std::mutex Mutex;
 #endif
 
-using namespace std;
-
 std::atomic<bool> lock_flag{false};
 int val;
+std::vector<std::chrono::milliseconds> starve_count;
 
 void my_lock(){
   bool expected = false;
@@ -78,12 +77,17 @@ void increase_counter()
 void *lock_example() {
   for(int i=0;i<LOOP_COUNT;i++) {
     my_lock();
+    auto start = high_resolution_clock::now();
 #ifdef STACK_LIST
     push_pop_func(i);
 #endif
 #ifdef COUNTER
     increase_counter();
 #endif
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(stop - start).count();
+    starve_count.push_back(chrono::milliseconds(duration));
+//    cout<<"duration = "<<duration<<"\n";
     my_unlock();
   }
 
@@ -118,6 +122,9 @@ static void cas_benchmark(benchmark::State &s) {
     assert(size_of_SL() == num_threads*LOOP_COUNT/2);
 #endif
     //cout<<"val = "<<val<<"\n";
+    auto max_ = -1;
+
+    //cout<<"Worse starvation = "<<*max_element(starve_count.begin(), starve_count.end())<<"\n";
   }
   //sem_destroy(&mutex);
 }
