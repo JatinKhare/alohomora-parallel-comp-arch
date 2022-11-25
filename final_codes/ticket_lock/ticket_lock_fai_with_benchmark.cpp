@@ -9,30 +9,15 @@
 // Now uses ticket system for fairness
 class Spinlock {
  private:
-  // Lock is now two counters:
-  //  1.) The latest place taken in line
-  //  2.) Which number is currently being served
   std::atomic<std::uint16_t> line{0};
-  // Needs to avoid the compiler putting this in a register!
   volatile std::uint16_t serving{0};
-  //std::uint16_t serving{0};
  public:
-  // Locking mechanism
   void lock() {
-    // Get the latest place in line (and increment the value)
     auto place = line.fetch_add(1);
-
-    // Wait until our number is "called"
-    while (serving != place)
-    {
-	sched_yeild();
+    while (serving != place){
+      ;
     } 
   }
-
-  // Unlocking mechanism
-  // Increment serving number to pass the lock
-  // No need for an atomic! The thread with the lock is the only one that
-  // accesses this variable!
   void unlock() {
     asm volatile("" : : : "memory");
     serving = serving + 1;
