@@ -16,22 +16,31 @@ using namespace std;
 
 class Spinlock {
  private:
- 	std::atomic<std::uint16_t> line{0};
- 	volatile std::uint16_t serving{0};
+ 	//std::atomic<std::uint16_t> line{0};
+ 	//volatile std::uint16_t serving{0};
+	alignas(64) std::atomic_size_t now_serving = {0};
+        alignas(64) std::atomic_size_t next_ticket = {0};
  public:
   void lock() {
-  	std::thread::id this_id = std::this_thread::get_id();
+  	/*std::thread::id this_id = std::this_thread::get_id();
     auto place = line.fetch_add(1);
    
     while (serving != place){
     	;
-    } 
+    } */
+	  const auto ticket = next_ticket.fetch_add(1, std::memory_order_relaxed);
+
+        while (now_serving.load(std::memory_order_acquire) != ticket) {
+            asm volatile("pause" ::: "memory");
+		}
   }
   void unlock() {
-  	std::thread::id this_id = std::this_thread::get_id();
-
+  	//std::thread::id this_id = std::this_thread::get_id();
+    /*
     asm volatile("" : : : "memory");
-    serving = serving + 1;
+    serving = serving + 1;*/
+	   const auto successor = now_serving.load(std::memory_order_relaxed) + 1;
+        now_serving.store(successor, std::memory_order_release);
   }
 };
 
