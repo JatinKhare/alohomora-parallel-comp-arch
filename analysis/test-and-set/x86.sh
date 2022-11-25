@@ -10,5 +10,5 @@ then
 else
 	echo "compiling for affinity specific code.."
 	g++ $1.cpp -isystem ../../benchmark/include -L../../benchmark/build/src -lbenchmark -lpthread -O3 -march=native -mtune=native -o run_$1
-	./run_$1
+	#./run_$1
 fi
