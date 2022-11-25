@@ -15,29 +15,30 @@
 using namespace std::chrono;
 
 #define COUNTER
-#define CRITICAL_SECTION_SIZE 1000
-
 //#define STACK_LIST
 
-#define LOOP_COUNT 10000
+#define CRITICAL_SECTION_SIZE 1000
+#define LOOP_COUNT 1 
+
+#define TIME_ANALYSIS
 
 //#define ORIGINAL
 #define BLOCKING_LOCK
-//#define PAUSE_ARM
 //#define PAUSE_x86
 //#define SCHED_YIELD
 
+
+//#define PAUSE_ARM
 #ifdef BLOCKING_LOCK
 	std::condition_variable cvar;
 	std::mutex Mutex;
 #endif
 std::atomic<bool> lock_flag{false};
 int val;
-//std::vector<std::chrono::milliseconds> starve_count;
-std::chrono::time_point<std::chrono::system_clock> start[128], end_time[128];
-std::chrono::duration<double> elapsed_seconds[128], max_elapsed_seconds[128], max_time;
-//double start_time[128], end_time[128];
-//int thread_counter = 0;
+#ifdef TIME_ANALYSIS
+	std::chrono::time_point<std::chrono::system_clock> start[256], end_time[256];
+	std::chrono::duration<double> elapsed_seconds[256], max_elapsed_seconds[256], max_time;
+#endif
 void my_lock(){
   bool expected = false;
 #ifdef BLOCKING_LOCK
@@ -79,20 +80,26 @@ void increase_counter()
 
 void *lock_example(int i) { 
   for(int j=0;j<LOOP_COUNT;j++) {
+#ifdef TIME_ANALYSIS
 	start[i] = high_resolution_clock::now();
+#endif
 	my_lock();
+#ifdef TIME_ANALYSIS
 	end_time[i] = high_resolution_clock::now();
+#endif
 #ifdef STACK_LIST
-    push_pop_func(i);
+    push_pop_func(j);
 #endif
 
 #ifdef COUNTER
     increase_counter();
 #endif
 	my_unlock();
+#ifdef TIME_ANALYSIS
 	elapsed_seconds[i] = end_time[i] - start[i];
 	if(elapsed_seconds[i].count() > max_elapsed_seconds[i].count())
 		max_elapsed_seconds[i] = elapsed_seconds[i];
+#endif
   }
 
   return NULL;
@@ -117,28 +124,32 @@ static void cas_benchmark(benchmark::State &s) {
     // Join threads
     for (auto &thread : threads) thread.join();
     threads.clear();
-#ifdef COUNTER
-    for(int i = 0; i<128; i++){
+#ifdef TIME_ANALYSIS
+    for(int i = 0; i<256; i++){
 	    if(max_elapsed_seconds[i].count()>max_time.count())
 		    max_time = max_elapsed_seconds[i];
     }
+#endif
+#ifdef COUNTER
     //cout<<"val = "<<val<<"\n";
     assert(val == LOOP_COUNT*CRITICAL_SECTION_SIZE*num_threads);
 #endif
 
 #ifdef STACK_LIST
-    //cout<<"size_of_SL() = "<<size_of_SL()<<"LOOP_COUNT = "<<LOOP_COUNT/2<<"\n";
+    //cout<<"size_of_SL() = "<<size_of_SL()<<", LOOP_COUNT/2 = "<<LOOP_COUNT/2<<", num_threads = "<<num_threads<<"\n";
     assert(size_of_SL() == num_threads*LOOP_COUNT/2);
 #endif
     auto max_ = -1;
 
     //cout<<"Worse starvation = "<<*max_element(starve_count.begin(), starve_count.end())<<"\n";
   }
+#ifdef TIME_ANALYSIS
     cout<<"Maximum wait time = "<<max_time.count()<<"\n";
+#endif
 }
 BENCHMARK(cas_benchmark)
     ->RangeMultiplier(2)
-    ->Range(1, std::thread::hardware_concurrency())
+    ->Range(1, std::thread::hardware_concurrency()*2)
     ->UseRealTime()
     ->Unit(benchmark::kMillisecond);
 

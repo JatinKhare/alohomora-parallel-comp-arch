@@ -12,6 +12,7 @@ using namespace std;
 #define NUM_THREADS 8
 #define CRITICAL_SECTION_SIZE 100000
 #define LOOP_COUNT 1000
+
 class Spinlock {
 	private:
 		std::atomic<bool> lock_flag{false};
@@ -98,9 +99,13 @@ void thread_affinity() {
 	for (unsigned i = 0; i < NUM_THREADS; i++) {
 		cpu_set_t cpuset;
 		CPU_ZERO(&cpuset);
-		CPU_SET(index[i], &cpuset);
+		//CPU_SET(index[i], &cpuset);
 		//CPU_SET(i%2, &cpuset);
-
+		if(i%2)
+			CPU_SET(0, &cpuset);
+		else
+			CPU_SET(1, &cpuset);
+		//	CPU_SET(i, &cpuset);
 		int rc = -1;
 		if(i%2){
 			std::thread t([&]() {inc(s1, a.val); });
