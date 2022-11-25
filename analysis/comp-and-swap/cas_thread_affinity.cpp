@@ -9,8 +9,8 @@
 #include <stdlib.h>
 using namespace std;
 
-#define NUM_THREADS 4
-#define CRITICAL_SECTION_SIZE 100
+#define NUM_THREADS 1
+#define CRITICAL_SECTION_SIZE 1
 
 class Spinlock {
 	private:
@@ -94,9 +94,13 @@ void thread_affinity() {
 	for (unsigned i = 0; i < NUM_THREADS; i++) {
 		cpu_set_t cpuset;
 		CPU_ZERO(&cpuset);
-		CPU_SET(index[i], &cpuset);
+		//CPU_SET(index[i], &cpuset);
 		//CPU_SET(i%2, &cpuset);
-
+		if(i%2)
+			CPU_SET(0, &cpuset);
+		else
+			CPU_SET(1, &cpuset);
+		//	CPU_SET(i, &cpuset);
 		int rc = -1;
 		if(i%2){
 			std::thread t([&]() {inc(s1, a.val); });

@@ -1,0 +1,5 @@
+-------------------------------------------------------------------
+Benchmark                         Time             CPU   Iterations
+-------------------------------------------------------------------
+osScheduling/real_time         3187 ms         1.19 ms            1
+threadAffinity/real_time        115 ms         1.34 ms            6
