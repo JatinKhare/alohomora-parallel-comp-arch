@@ -14,15 +14,11 @@
 #include <time.h>
 using namespace std::chrono;
 
-
-//#define TEST_TEST_AND_SET
-#define TEST_AND_SET
-
 #define COUNTER
 //#define STACK_LIST
 
-#define CRITICAL_SECTION_SIZE 1
-#define LOOP_COUNT 100000
+#define CRITICAL_SECTION_SIZE 1000
+#define LOOP_COUNT 1 
 
 //#define TIME_ANALYSIS
 
@@ -33,7 +29,6 @@ using namespace std::chrono;
 
 
 //#define PAUSE_ARM
-
 #ifdef BLOCKING_LOCK
   std::condition_variable cvar;
   std::mutex Mutex;
@@ -43,45 +38,17 @@ using namespace std::chrono;
   std::chrono::duration<double> elapsed_seconds[256], max_elapsed_seconds[256], max_time;
 #endif
 
-std::atomic<bool> lock_flag{false};
-int val;
+std::atomic<std::uint16_t> line{0};
+volatile std::uint16_t serving{0};int val;
 
 void my_lock(){
-
-#ifdef BLOCKING_LOCK
-  std::unique_lock<std::mutex> lock(Mutex);
-#endif
-
-  #ifdef TEST_TEST_AND_SET
-      do{
-          while(lock_flag.load()){
-            #ifdef ORIGINAL
-              ;
-            #endif
-            #ifdef SCHED_YIELD
-              sched_yield();
-            #endif
-
-            #ifdef PAUSE_ARM
-              asm volatile("yield");
-            #endif
-
-            #ifdef PAUSE_x86
-              asm volatile("pause");
-            #endif
-
-            #ifdef BLOCKING_LOCK
-              cvar.wait(lock);
-            #endif          
-        }
-      }while (lock_flag.exchange(1));
+      #ifdef BLOCKING_LOCK
+        std::unique_lock<std::mutex> lock(Mutex);
       #endif
-      
-      #ifdef TEST_AND_SET
-      while (lock_flag.exchange(1)){
-        #ifdef ORIGINAL
-          ;
-        #endif
+      auto place = line.fetch_add(1);
+
+      while (serving != place){
+        
         #ifdef SCHED_YIELD
           sched_yield();
         #endif
@@ -96,19 +63,21 @@ void my_lock(){
 
         #ifdef BLOCKING_LOCK
           cvar.wait(lock);
-        #endif      
-        }
-      #endif
+        #endif
+
+      } 
+
 }
 
 void my_unlock(){
-
-  lock_flag.exchange(0);
+  asm volatile("" : : : "memory");
+  serving = serving + 1;
 
 #ifdef BLOCKING_LOCK
   cvar.notify_all();
   //cvar.notify_one();
 #endif
+
 }
 void increase_counter()
 {
@@ -145,7 +114,7 @@ void *lock_example(int i) {
 }
 
 // Small Benchmark (Google benchmark runnning mechanism)
-static void tas_benchmark(benchmark::State &s) {
+static void cas_benchmark(benchmark::State &s) {
   // Sweep over a range of threads
   auto num_threads = s.range(0);
 
@@ -186,7 +155,7 @@ static void tas_benchmark(benchmark::State &s) {
     cout<<"Maximum wait time = "<<max_time.count()<<"\n";
 #endif
 }
-BENCHMARK(tas_benchmark)
+BENCHMARK(cas_benchmark)
     ->RangeMultiplier(2)
     ->Range(1, std::thread::hardware_concurrency()*2)
     ->UseRealTime()

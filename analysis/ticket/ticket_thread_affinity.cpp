@@ -10,25 +10,29 @@
 using namespace std;
 
 
-
-#define NUM_THREADS 8
-#define CRITICAL_SECTION_SIZE 100000
-#define LOOP_COUNT 1000
+#define NUM_THREADS 4
+#define CRITICAL_SECTION_SIZE 10000
+#define LOOP_COUNT 100
 
 class Spinlock {
-	private:
-		std::atomic<bool> lock_flag{false};
-	public:
-		void lock(){
-			bool expected = false;
-			while (!lock_flag.compare_exchange_strong(expected, true)) {
-                                expected = false;
-			}
-		}
+ private:
+ 	std::atomic<std::uint16_t> line{0};
+ 	volatile std::uint16_t serving{0};
+ public:
+  void lock() {
+  	std::thread::id this_id = std::this_thread::get_id();
+    auto place = line.fetch_add(1);
+   
+    while (serving != place){
+    	;
+    } 
+  }
+  void unlock() {
+  	std::thread::id this_id = std::this_thread::get_id();
 
-		void unlock(){
-			lock_flag.store(false);
-		}
+    asm volatile("" : : : "memory");
+    serving = serving + 1;
+  }
 };
 
 
@@ -38,7 +42,6 @@ void inc(Spinlock &s, std::int64_t &val) {
 		s.lock();
 		for(int j = 0; j<CRITICAL_SECTION_SIZE; j++)
 			val++;
-		//val++;
 		s.unlock();
 	}
 }
@@ -51,10 +54,11 @@ struct alignas(64) AlignedAtomic {
 };
 
 void os_scheduler() {
+	int affinity_ = 0;
 
 	AlignedAtomic a{0};
 	AlignedAtomic b{0};
-	cout<<"a = "<<&a.val<<", b = "<<&b.val<<"\n";
+	//cout<<"a = "<<&a.val<<", b = "<<&b.val<<"\n";
 	Spinlock s1;
 
 	std::vector<std::thread> threads(NUM_THREADS);
@@ -86,28 +90,23 @@ static void osScheduling(benchmark::State& s) {
 BENCHMARK(osScheduling)->UseRealTime()->Unit(benchmark::kMillisecond);
 
 void thread_affinity() {
-
 	AlignedAtomic a{0};
 	AlignedAtomic b{0};
-	cout<<"a = "<<&a.val<<", b = "<<&b.val<<"\n";
+	//cout<<"a = "<<&a.val<<", b = "<<&b.val<<"\n";
 	Spinlock s1;
-	//int index[4] = {0, 1, 1, 0};//worse case
+	int index[4] = {0, 0, 0, 0};//worse case
 	//int index[4] = {0, 1, 0, 1};//best case
 	//int index[4] = {30, 7, 31, 127};
 	//int index[8] = {0, 1, 30, 31, 66, 67, 94, 97}; //worst arrangement
-	int index[8] = {0, 0, 1, 1, 2, 2, 3, 3};	//best arrangement
+	//int index[8] = {0, 0, 1, 1, 2, 2, 3, 3};	//best arrangement
 	//int index[8] = {0, 4, 1, 5, 2, 6, 3, 7};	//cache ping pong
 	std::vector<std::thread> threads(NUM_THREADS);
 	for (unsigned i = 0; i < NUM_THREADS; i++) {
 		cpu_set_t cpuset;
 		CPU_ZERO(&cpuset);
-		//CPU_SET(index[i], &cpuset);
+		CPU_SET(index[i], &cpuset);
 		//CPU_SET(i%2, &cpuset);
-		if(i%2)
-			CPU_SET(0, &cpuset);
-		else
-			CPU_SET(1, &cpuset);
-		//	CPU_SET(i, &cpuset);
+
 		int rc = -1;
 		if(i%2){
 			std::thread t([&]() {inc(s1, a.val); });
@@ -135,7 +134,7 @@ void thread_affinity() {
 	assert(a.val == NUM_THREADS*LOOP_COUNT*CRITICAL_SECTION_SIZE/2);
 	assert(b.val == NUM_THREADS*LOOP_COUNT*CRITICAL_SECTION_SIZE/2);
 
-}
+}	 
 
 // Data sharing benchmark w/ manual scheduling
 static void threadAffinity(benchmark::State& s) {
