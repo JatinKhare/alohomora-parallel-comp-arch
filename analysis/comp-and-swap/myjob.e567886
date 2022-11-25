@@ -1,9 +1,0 @@
-2022-11-25T02:43:37-06:00
-Running ./run_cas_thread_affinity
-Run on (128 X 1838.84 MHz CPU s)
-CPU Caches:
-  L1 Data 32 KiB (x128)
-  L1 Instruction 32 KiB (x128)
-  L2 Unified 512 KiB (x128)
-  L3 Unified 32768 KiB (x16)
-Load Average: 34.35, 99.46, 119.46
