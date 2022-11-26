@@ -1,0 +1,10 @@
+2022-11-25T18:31:07-06:00
+Running ./run_benchmark_libslock_mcs
+Run on (128 X 2215.8 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x128)
+  L1 Instruction 32 KiB (x128)
+  L2 Unified 512 KiB (x128)
+  L3 Unified 32768 KiB (x16)
+Load Average: 6.48, 3.37, 10.37
+slurmstepd: error: *** JOB 569283 ON c301-020 CANCELLED AT 2022-11-25T19:31:15 DUE TO TIME LIMIT ***

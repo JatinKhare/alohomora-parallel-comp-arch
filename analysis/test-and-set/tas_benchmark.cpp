@@ -24,10 +24,10 @@ using namespace std::chrono;
 #define CRITICAL_SECTION_SIZE 1
 #define LOOP_COUNT 100000
 
-//#define TIME_ANALYSIS
+#define TIME_ANALYSIS
 
-#define ORIGINAL
-//#define BLOCKING_LOCK
+//#define ORIGINAL
+#define BLOCKING_LOCK
 //#define PAUSE_x86
 //#define SCHED_YIELD
 

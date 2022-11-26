@@ -1,0 +1,9 @@
+2022-11-25T18:31:33-06:00
+Running ./run_benchmark_libslock_mcs
+Run on (128 X 2584.83 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x128)
+  L1 Instruction 32 KiB (x128)
+  L2 Unified 512 KiB (x128)
+  L3 Unified 32768 KiB (x16)
+Load Average: 0.46, 0.33, 1.15

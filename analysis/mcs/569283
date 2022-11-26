@@ -1,0 +1,11 @@
+---------------------------------------------------------------------------
+Benchmark                                 Time             CPU   Iterations
+---------------------------------------------------------------------------
+mcs_lock_benchmark/1/real_time        0.336 ms        0.021 ms         2018
+mcs_lock_benchmark/2/real_time         7.22 ms        0.088 ms           96
+mcs_lock_benchmark/4/real_time         11.2 ms        0.139 ms           65
+mcs_lock_benchmark/8/real_time         22.7 ms        0.193 ms           36
+mcs_lock_benchmark/16/real_time        46.5 ms        0.355 ms           17
+mcs_lock_benchmark/32/real_time         103 ms        0.901 ms            8
+mcs_lock_benchmark/64/real_time         387 ms         2.49 ms            2
+mcs_lock_benchmark/128/real_time        775 ms         7.16 ms            1
