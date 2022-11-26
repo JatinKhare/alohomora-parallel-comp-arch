@@ -16,7 +16,7 @@
 #include <time.h>
 using namespace std;
 
-#define LOOP_COUNT 100000
+#define LOOP_COUNT 100
 #define CRITICAL_SECTION_SIZE 1   
 //#define NUM_THREADS 8
 
@@ -27,11 +27,11 @@ using namespace std::chrono;
 //#define STACK_LIST
 
 
-//#define TIME_ANALYSIS
+#define TIME_ANALYSIS
 
 //#define ORIGINAL
-#define BLOCKING_LOCK
-//#define PAUSE_x86
+//#define BLOCKING_LOCK
+#define PAUSE_x86
 //#define SCHED_YIELD
 //#define ACTIVE_BACKOFF
 //#define EXP_BACKOFF
@@ -57,8 +57,6 @@ int val;
   std::uniform_int_distribution<int> dist;
   std::mt19937 rng;
 #endif
-std::atomic<int> lock_flag1{0};
-std::atomic<int> lock_flag2{0};
 
 typedef struct qnode {
   struct qnode *next;
@@ -66,13 +64,14 @@ typedef struct qnode {
 } qnode;
 
 
-int val =0;
 qnode* L = new qnode;
 
 class mcs_lock {
         public:
 void lock (qnode **L, qnode *I) {
-   
+ #ifdef BLOCKING_LOCK
+        std::unique_lock<std::mutex> lock(Mutex);
+#endif  
     I->next = NULL;
     qnode *predecessor = I;
     
@@ -99,7 +98,7 @@ void lock (qnode **L, qnode *I) {
         #endif
 
         #ifdef ORIGINAL
-          cvar.wait(lock);
+	  ;
         #endif
     }
 }
@@ -125,9 +124,20 @@ void unlock (qnode** L, qnode *I) {
 void inc(mcs_lock &t, std::int64_t &val) {
         for(int i=0;i<LOOP_COUNT;i++) {
                 qnode* I = new qnode;
+#ifdef TIME_ANALYSIS
+	start[i] = high_resolution_clock::now();
+#endif
                 t.lock(&L, I);
+#ifdef TIME_ANALYSIS
+	end_time[i] = high_resolution_clock::now();
+#endif
                 val++;
                 t.unlock(&L, I);
+#ifdef TIME_ANALYSIS
+	elapsed_seconds[i] = end_time[i] - start[i];
+	if(elapsed_seconds[i].count() > max_elapsed_seconds[i].count())
+		max_elapsed_seconds[i] = elapsed_seconds[i];
+#endif
         }
 }
 
@@ -157,9 +167,18 @@ static void mcs_lock_benchmark(benchmark::State &s) {
     // Join threads
     for (auto &thread : threads) thread.join();
     threads.clear();
+    #ifdef TIME_ANALYSIS
+    for(int i = 0; i<256; i++){
+	    if(max_elapsed_seconds[i].count()>max_time.count())
+		    max_time = max_elapsed_seconds[i];
+    }
+#endif
     //std::cout<<"val = "<<val<<"\n";
     assert(val == LOOP_COUNT*CRITICAL_SECTION_SIZE*num_threads);
   }
+#ifdef TIME_ANALYSIS
+    cout<<"Maximum wait time = "<<max_time.count()<<"\n";
+#endif
 }
 BENCHMARK(mcs_lock_benchmark)
     ->RangeMultiplier(2)
