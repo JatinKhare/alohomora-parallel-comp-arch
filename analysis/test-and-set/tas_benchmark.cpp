@@ -18,7 +18,7 @@ using namespace std::chrono;
 //#define TEST_TEST_AND_SET
 #define TEST_AND_SET
 
-#define COUNTER
+//#define COUNTER
 //#define STACK_LIST
 
 #define CRITICAL_SECTION_SIZE 1
@@ -30,10 +30,20 @@ using namespace std::chrono;
 #define BLOCKING_LOCK
 //#define PAUSE_x86
 //#define SCHED_YIELD
-
+//#define ACTIVE_BACKOFF
+//#define EXP_BACKOFF
+//#define RANDOM_BACKOFF
 
 //#define PAUSE_ARM
-
+#ifdef EXP_BACKOFF
+	#define MIN_BACKOFF 4
+	#define MAX_BACKOFF 1024
+#endif
+#ifdef RANDOM_BACKOFF
+	// Random number generator
+  std::uniform_int_distribution<int> dist;
+  std::mt19937 rng;
+#endif
 #ifdef BLOCKING_LOCK
   std::condition_variable cvar;
   std::mutex Mutex;
@@ -51,7 +61,70 @@ void my_lock(){
 #ifdef BLOCKING_LOCK
   std::unique_lock<std::mutex> lock(Mutex);
 #endif
+#ifdef ACTIVE_BACKOFF
+      while (1) {
+       // Try and grab the lock
+       //if (!lock_flag.exchange(true)) return;
+      if(!lock_flag.exchange(true))return;
+       // Wait for the lock to be free
+       do {
+         // Pause for some number of iterations
+         for (volatile int i = 0; i < 150; i += 1)
+           ;
+         // Read the lock state
+       } while (lock_flag.load());
+     }
 
+#endif
+#ifdef EXP_BACKOFF
+     int backoff_iters = MIN_BACKOFF;
+     while (1) {
+      // Try and grab the lock
+      // Return if we get the lock
+      if (!lock_flag.exchange(true)) return;
+
+      // If we didn't get the lock, just read the value which gets cached
+      // locally. This leads to less traffic.
+      // Pause for an exponentially increasing number of iterations
+      do {
+        // Pause for some number of iterations
+        for (int i = 0; i < backoff_iters; i++) _mm_pause();
+
+        // Get the backoff iterations for next time
+        backoff_iters = std::min(backoff_iters << 1, MAX_BACKOFF);
+
+        // Check to see if the lock is free
+      } while (lock_flag.load());
+    }
+#endif
+#ifdef RANDOM_BACKOFF
+    rng.seed(std::random_device()());
+
+    dist = std::uniform_int_distribution<int>(4, 1024);
+    // Keep trying
+    while (1) {
+      // Try and grab the lock
+      // Exit if we got the lock
+      if (!lock_flag.exchange(true)) return;
+
+      // If we didn't get the lock, just read the value which gets cached
+      // locally. This leads to less traffic.
+      // Pause for a random number of iterations (between 4 and 1024)
+      do {
+        // Get a random number of iterations between 4 and 1024
+        int backoff_iters = dist(rng);
+
+        // Pause for some number of iterations
+        for (int i = 0; i < backoff_iters; i++) _mm_pause();
+
+        // Check to see if the lock is now free
+      } while (lock_flag.load());
+    }
+#endif
+
+#ifndef ACTIVE_BACKOFF
+#ifndef EXP_BACKOFF
+#ifndef RANDOM_BACKOFF
   #ifdef TEST_TEST_AND_SET
       do{
           while(lock_flag.load()){
@@ -99,6 +172,9 @@ void my_lock(){
         #endif      
         }
       #endif
+#endif
+#endif
+#endif
 }
 
 void my_unlock(){
@@ -106,8 +182,8 @@ void my_unlock(){
   lock_flag.exchange(0);
 
 #ifdef BLOCKING_LOCK
-  cvar.notify_all();
-  //cvar.notify_one();
+  //cvar.notify_all();
+  cvar.notify_one();
 #endif
 }
 void increase_counter()
