@@ -302,7 +302,7 @@ void *lock_example(int i) {
 #endif
 
 #ifdef COUNTER
-    val++;
+increase_counter();
 #endif
     cna_unlock(tail, me);
 #ifdef TIME_ANALYSIS
