@@ -11,16 +11,14 @@ using namespace std;
 
 #define CRITICAL_SECTION_SIZE 1
 #define LOOP_COUNT 100000
-
-class NumaLock {
-	private:
         typedef struct cna_node {
             uintptr_t spin ;
             int socket ;
             struct cna_node *secTail ;
             struct cna_node *next;
         } cna_node_t;
-        #define LOOP_COUNT 100000
+class NumaLock {
+	private:
         std::uint64_t val =0;
         cna_node_t** tail = new cna_node_t*;
         //This function (instruction ) helps us get the numa node number
@@ -72,8 +70,8 @@ class NumaLock {
         	
     public:
 
-		int cna_lock(cna_node_t** tail  , cna_node_t *me)
-{
+int cna_lock(cna_node_t** tail  , cna_node_t *me)
+    {
     me->next = 0;
     me->socket = -1;
     me->spin = 0;
@@ -148,22 +146,15 @@ class NumaLock {
 }
 };
 
-void increase_counter()
-{
-    for(int j = 0; j<CRITICAL_SECTION_SIZE; j++){
-	val++;
-    }
-}
 
 // Increment val once each time the lock is acquired
 void inc(NumaLock &s, std::int64_t &val) {
 	for (int i = 0; i < LOOP_COUNT; i++) {
 		cna_node_t* me= new cna_node_t;
-        cna_lock(tail, me);
+        s.cna_lock(tail, me);
 		for(int j = 0; j<CRITICAL_SECTION_SIZE; j++)
-			increase_counter();
-		//val++;
-		cna_unlock(tail, me);
+		    val++;
+		s.cna_unlock(tail, me);
         free(me);
 	}
 }
@@ -181,7 +172,7 @@ static void os_scheduler(benchmark::State &s) {
 	for(auto _:s) {
 	AlignedAtomic a{0};
 	AlignedAtomic b{0};
-	Spinlock s1;
+	NumaLock s1;
 
 	std::vector<std::thread> threads(num_threads);
 	for (unsigned i = 0; i < num_threads; i++) {
@@ -227,7 +218,7 @@ static void thread_affinity(benchmark::State &s) {
 	for(auto _:s){
 	AlignedAtomic a{0};
 	AlignedAtomic b{0};
-	Spinlock s1;
+	NumaLock s1;
 	int index[4] = {0, 0, 0, 1};//worse case
 	//int index[4] = {0, 1, 0, 1};//best case
 	//int index[4] = {30, 7, 31, 127};
