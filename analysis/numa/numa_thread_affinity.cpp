@@ -1,17 +1,16 @@
 #include <benchmark/benchmark.h>
 #include <cassert>
-#include <thread>
 #include <cstdint>
 #include <iostream>
 #include <thread>
 #include <vector>
 #include <pthread.h>
 #include <stdlib.h>
+#include <random>
 using namespace std;
 
 #define CRITICAL_SECTION_SIZE 1
-#define LOOP_COUNT 100000
-cna_node_t** tail = new cna_node_t*;
+#define LOOP_COUNT 1000
 
 typedef struct cna_node {
             uintptr_t spin ;
@@ -19,6 +18,7 @@ typedef struct cna_node {
             struct cna_node *secTail ;
             struct cna_node *next;
 } cna_node_t;
+cna_node_t** tail = new cna_node_t*;
         std::uint64_t val =0;
 
 class NumaLock {
@@ -66,7 +66,7 @@ class NumaLock {
     #define THRESHOLD (0xffff)
     int keep_lock_local ()
     {
-        //return pseudo_rand() & THRESHOLD;
+        return rand() & THRESHOLD;
         return true;
     }
         	
@@ -96,7 +96,7 @@ int cna_lock(cna_node_t** tail  , cna_node_t *me)
     return 0;
 }
 
-		void cna_unlock(cna_node_t** tail , cna_node_t *me) {
+void cna_unlock(cna_node_t** tail , cna_node_t *me) {
     // Is there a successor in the main queue? 
     if (! me->next)
     {
@@ -152,11 +152,12 @@ int cna_lock(cna_node_t** tail  , cna_node_t *me)
 // Increment val once each time the lock is acquired
 void inc(NumaLock &s, std::int64_t &val) {
 	for (int i = 0; i < LOOP_COUNT; i++) {
-		cna_node_t* me= new cna_node_t;
+	cna_node_t* me= new cna_node_t;
+
         s.cna_lock(tail, me);
 		for(int j = 0; j<CRITICAL_SECTION_SIZE; j++)
 		    val++;
-		s.cna_unlock(tail, me);
+	s.cna_unlock(tail, me);
         free(me);
 	}
 }
@@ -170,7 +171,7 @@ struct alignas(64) AlignedAtomic {
 
 static void os_scheduler(benchmark::State &s) {
         auto num_threads= s.range(0);
-	
+	  *tail = NULL;	
 	for(auto _:s) {
 	AlignedAtomic a{0};
 	AlignedAtomic b{0};
@@ -209,7 +210,7 @@ static void os_scheduler(benchmark::State &s) {
 
 BENCHMARK(os_scheduler)
 ->RangeMultiplier(2)
-->Range(1,std::thread::hardware_concurrency()*4)
+->Range(1,std::thread::hardware_concurrency()/4)
 ->UseRealTime()
 ->Unit(benchmark::kMillisecond);
 
@@ -277,7 +278,7 @@ static void thread_affinity(benchmark::State &s) {
 //}
 BENCHMARK(thread_affinity)
 ->RangeMultiplier(2)
-->Range(1,std::thread::hardware_concurrency()*2)
+->Range(1,std::thread::hardware_concurrency()/4)
 ->UseRealTime()
 ->Unit(benchmark::kMillisecond);
 BENCHMARK_MAIN();
