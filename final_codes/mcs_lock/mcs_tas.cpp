@@ -7,9 +7,8 @@
 #include <stdlib.h>
 using namespace std;
 
-pthread_mutex_t mutext_lock1;
-pthread_mutex_t mutext_lock2;
-pthread_mutex_t mutext_lock3;
+#define LOOP_COUNT 1000000
+#define NUM_THREADS 32
 
 std::atomic<int> lock_flag1{0};
 std::atomic<int> lock_flag2{0};
@@ -31,91 +30,43 @@ void print_ll(qnode * root){
 
 
 int val =0;
-qnode *L = new qnode;
+qnode* L = new qnode;
 
-void my_lock (qnode *L, qnode *I) {
+void my_lock (qnode **L, qnode *I) {
    
     I->next = NULL;
-    //cout<<"before predecessor = "<<predecessor<<", I = "<<I<<"\n";
-    qnode *predecessor = new qnode;
-    while (lock_flag1.exchange(1)) {;}
-    //pthread_mutex_lock(&mutext_lock1);
+    qnode *predecessor = I;
+    
+    predecessor = __sync_lock_test_and_set(L, predecessor);
 
-    //cout<<"before I = "<<I<<", L = "<<L<<"\n";
-
-    //predecessor = I;
-    predecessor = L;   
-    L = I;
-    lock_flag1.exchange(0);   
-
-    //cout<<"after predecessor = "<<predecessor<<", L = "<<L<<"\n\n";
-    //pthread_mutex_unlock(&mutext_lock1);
-
-    //std::atomic_compare_exchange_strong(L, &temp_qnode, predecessor/* std::memory_order_release, std::memory_order_relaxed*/);
     if (predecessor!=NULL) {
         I->locked = true;
         predecessor->next = I;
         while (I->locked)
-          std::cout<<"waiting for predecessor to make me free : )\n";
+		;
     }
-    //cout<<"Got the lock!\n";
-  free(predecessor);
 }
 
-void my_unlock (qnode *L, qnode *I) {
+void my_unlock (qnode** L, qnode *I) {
 
-    if(!I->next){  
-      //pthread_mutex_lock(&mutext_lock1);
-      while (lock_flag2.exchange(1)){;}
-      //cout<<"before I = "<<I<<", L = "<<L<<"\n";
-      if(L == I){
-        L = NULL;
-      }
-      //cout<<"after I = "<<I<<", L = "<<L<<"\n\n";
-      lock_flag2.exchange(0);    
-      if(L == NULL){
-        //pthread_mutex_unlock(&mutext_lock1);
-        //cout<<"Unlocking.. no one to signal to.\n";
-        return;
-      }
-      //pthread_mutex_unlock(&mutext_lock1);
+   if (!I->next){
+          if(__sync_val_compare_and_swap(L, I, NULL) == I)
+	   return;
+    }
+    while (!I->next){;} 
 
-    }
-    
-    while(!I->next){
-        //cout<<"Unlock? waiting for someone to be added\n";
-        ;//std::cout<<"waiting to get the new node I added to my next :)\n";
-    }
     I->next->locked = false;
     
-    //std::cout<<"["<<std::this_thread::get_id()<<"] Going into unlock\n";
-   /*if (!I->next){
-       if(std::atomic_compare_exchange_strong(L, &I, NULL))
-          return;
-    }
-
-    while (!I->next){
-      std::cout<<"here..\n";
-        ;
-    } 
-    I->next->locked = false;
-    */
 }
 
 
 void *lock_example(void *arg) {
   //std::cout<<" Thread = "<<std::this_thread::get_id()<<"\n";
   qnode* I = new qnode;
-  for(int i=0;i<2000;i++) {
-    my_lock(L, I);
-    //pthread_mutex_lock(&mutext_lock3);
+  for(int i=0;i<LOOP_COUNT;i++) {
+    my_lock(&L, I);
       val++;
-    //pthread_mutex_unlock(&mutext_lock3);
-    my_unlock(L, I);
-    /*pthread_mutex_lock(&mutext_lock3);
-    print_ll(L);
-    pthread_mutex_unlock(&mutext_lock3);*/
-
+    my_unlock(&L, I);
   }
   free(I);
 
@@ -124,12 +75,7 @@ void *lock_example(void *arg) {
 
 int main(){
 
-    /*if (pthread_mutex_init(&mutext_lock, NULL) != 0) {
-        printf("\n mutex init has failed\n");
-        return 1;
-    }*/
   L = NULL; 
-  int NUM_THREADS=100 ;
   pthread_t threads[NUM_THREADS];
   for (int i = 0; i < NUM_THREADS; i++) {
     pthread_create( &threads[i], NULL, &lock_example,NULL);

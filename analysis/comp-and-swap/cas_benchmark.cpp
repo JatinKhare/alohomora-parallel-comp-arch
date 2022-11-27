@@ -1,4 +1,5 @@
 #include <benchmark/benchmark.h>
+#include <emmintrin.h>
 #include <atomic>
 #include <cstdint>
 #include <iostream>
@@ -9,6 +10,7 @@
 #include <sched.h>
 #include <condition_variable>
 #include <mutex>
+#include <random>
 #include "../include/header.h"
 #include <chrono>
 #include <time.h>
@@ -17,17 +19,24 @@ using namespace std::chrono;
 #define COUNTER
 //#define STACK_LIST
 
-#define CRITICAL_SECTION_SIZE 1000
-#define LOOP_COUNT 1 
+#define CRITICAL_SECTION_SIZE 1
+#define LOOP_COUNT 100000 
 
-#define TIME_ANALYSIS
+//#define TIME_ANALYSIS
 
 //#define ORIGINAL
 #define BLOCKING_LOCK
+#define BLOCKING_LOCK_1
 //#define PAUSE_x86
 //#define SCHED_YIELD
+//#define ACTIVE_BACKOFF
+//#define EXP_BACKOFF
+//#define RANDOM_BACKOFF
 
-
+#ifdef EXP_BACKOFF
+	#define MIN_BACKOFF 4
+	#define MAX_BACKOFF 1024
+#endif
 //#define PAUSE_ARM
 #ifdef BLOCKING_LOCK
 	std::condition_variable cvar;
@@ -39,13 +48,81 @@ int val;
 	std::chrono::time_point<std::chrono::system_clock> start[256], end_time[256];
 	std::chrono::duration<double> elapsed_seconds[256], max_elapsed_seconds[256], max_time;
 #endif
+#ifdef RANDOM_BACKOFF
+	// Random number generator
+  std::uniform_int_distribution<int> dist;
+  std::mt19937 rng;
+#endif
 void my_lock(){
   bool expected = false;
 #ifdef BLOCKING_LOCK
 	std::unique_lock<std::mutex> lock(Mutex);
 #endif
-  while (!lock_flag.compare_exchange_strong(expected, true)) {
-	expected = false;
+#ifdef ACTIVE_BACKOFF
+      while (1) {
+       // Try and grab the lock
+       //if (!lock_flag.exchange(true)) return;
+      if(__sync_val_compare_and_swap((bool *)&lock_flag, expected, true) == expected)return;
+       // Wait for the lock to be free
+       do {
+         // Pause for some number of iterations
+         for (volatile int i = 0; i < 150; i += 1)
+           ;
+         // Read the lock state
+       } while (lock_flag.load());
+     }
+
+#endif
+#ifdef EXP_BACKOFF
+     int backoff_iters = MIN_BACKOFF;
+     while (1) {
+      // Try and grab the lock
+      // Return if we get the lock
+      if (__sync_val_compare_and_swap((bool *)&lock_flag, expected, true) == expected) return;
+
+      // If we didn't get the lock, just read the value which gets cached
+      // locally. This leads to less traffic.
+      // Pause for an exponentially increasing number of iterations
+      do {
+        // Pause for some number of iterations
+        for (int i = 0; i < backoff_iters; i++) _mm_pause();
+
+        // Get the backoff iterations for next time
+        backoff_iters = std::min(backoff_iters << 1, MAX_BACKOFF);
+
+        // Check to see if the lock is free
+      } while (lock_flag.load());
+    }
+#endif
+#ifdef RANDOM_BACKOFF
+    rng.seed(std::random_device()());
+     
+    dist = std::uniform_int_distribution<int>(4, 1024);
+    // Keep trying
+    while (1) {
+      // Try and grab the lock
+      // Exit if we got the lock
+      if (__sync_val_compare_and_swap((bool *)&lock_flag, expected, true) == expected) return;
+
+      // If we didn't get the lock, just read the value which gets cached
+      // locally. This leads to less traffic.
+      // Pause for a random number of iterations (between 4 and 1024)
+      do {
+        // Get a random number of iterations between 4 and 1024
+        int backoff_iters = dist(rng);
+
+        // Pause for some number of iterations
+        for (int i = 0; i < backoff_iters; i++) _mm_pause();
+
+        // Check to see if the lock is now free
+      } while (lock_flag.load());
+    }
+#endif
+#ifndef ACTIVE_BACKOFF
+#ifndef EXP_BACKOFF
+#ifndef RANDOM_BACKOFF
+	while (!lock_flag.compare_exchange_strong(expected, true)) {
+		expected = false;
 #ifdef SCHED_YIELD
 	sched_yield();
 #endif
@@ -62,9 +139,15 @@ void my_lock(){
 	cvar.wait(lock);
 #endif
   }
+#endif
+#endif
+#endif
 }
 
 void my_unlock(){
+#ifdef BLOCKING_LOCK_1
+	std::unique_lock<std::mutex> lock(Mutex);
+#endif
   lock_flag.store(false);
 #ifdef BLOCKING_LOCK
   cvar.notify_all();

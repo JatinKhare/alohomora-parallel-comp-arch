@@ -1,6 +1,7 @@
 #!/bin/bash
 
-FPATH='/home/jatin/Desktop/ut_austin_3rd_semester_study_material/parallel-computer-architecture'
+#FPATH='/home/jatin/Desktop/ut_austin_3rd_semester_study_material/parallel-computer-architecture'
+FPATH='../..'
 
 #g++ mybenchmark.cpp -std=c++11 -isystem $FPATH/benchmark/include \
 #  -L$FPATH/benchmark/build/src -lbenchmark -lpthread -o mybenchmark

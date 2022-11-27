@@ -50,7 +50,7 @@ void push_pop_func(int i)
            pop_ll(); 
         }
 }
-      
+/*      
  // Fetch and add routine using a mutex
  uint64_t fetch_and_add(uint64_t &pos, std::mutex &m) {
    std::lock_guard<std::mutex> g(m);
@@ -148,4 +148,4 @@ void push_pop_func(int i)
               C[(row + row_chunk) * N + col_chunk + idx] +=
                   A[(row + row_chunk) * N + tile + tile_row] *
                   B[tile * N + tile_row * N + col_chunk + idx];
- }
+ }*/
