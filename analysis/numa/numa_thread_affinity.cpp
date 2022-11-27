@@ -11,16 +11,18 @@ using namespace std;
 
 #define CRITICAL_SECTION_SIZE 1
 #define LOOP_COUNT 100000
-        typedef struct cna_node {
+cna_node_t** tail = new cna_node_t*;
+
+typedef struct cna_node {
             uintptr_t spin ;
             int socket ;
             struct cna_node *secTail ;
             struct cna_node *next;
-        } cna_node_t;
+} cna_node_t;
+        std::uint64_t val =0;
+
 class NumaLock {
 	private:
-        std::uint64_t val =0;
-        cna_node_t** tail = new cna_node_t*;
         //This function (instruction ) helps us get the numa node number
         int current_numa_node()
         {
