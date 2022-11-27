@@ -15,13 +15,11 @@
 #include <chrono>
 #include <time.h>
 using namespace std;
+using namespace std::chrono;
 
 #define LOOP_COUNT 100000
-#define CRITICAL_SECTION_SIZE 1   
-//#define NUM_THREADS 8
+#define CRITICAL_SECTION_SIZE 1
 
-
-using namespace std::chrono;
 
 #define COUNTER
 //#define STACK_LIST
@@ -29,13 +27,13 @@ using namespace std::chrono;
 
 #define TIME_ANALYSIS
 
-#define ORIGINAL
+//#define ORIGINAL
 //#define BLOCKING_LOCK
 //#define PAUSE_x86
 //#define SCHED_YIELD
 //#define ACTIVE_BACKOFF
 //#define EXP_BACKOFF
-//#define RANDOM_BACKOFF
+#define RANDOM_BACKOFF
 
 #ifdef EXP_BACKOFF
 	#define MIN_BACKOFF 4
@@ -81,7 +79,6 @@ void lock (qnode **L, qnode *I) {
     if (predecessor!=NULL) {
         I->locked = true;
         predecessor->next = I;
-  /////////////////
 #ifdef ACTIVE_BACKOFF
       while (1) {
        // Try and grab the lock
@@ -143,12 +140,10 @@ void lock (qnode **L, qnode *I) {
     }
 #endif
 
-    ////////////////
-
-
 #ifndef ACTIVE_BACKOFF
 #ifndef EXP_BACKOFF
 #ifndef RANDOM_BACKOFF
+    int flag = 5;
     while (I->locked){
 #ifdef SCHED_YIELD
 	sched_yield();
@@ -174,9 +169,15 @@ void lock (qnode **L, qnode *I) {
 #endif
 
 }
+else{
+	;//cout<<"got the lock\n";
+}
 };
 
 void unlock (qnode** L, qnode *I) {
+    #ifdef BLOCKING_LOCK
+	std::unique_lock<std::mutex> lock(Mutex);
+    #endif
 
    if (!I->next){
           if(__sync_val_compare_and_swap(L, I, NULL) == I)
@@ -193,12 +194,6 @@ void unlock (qnode** L, qnode *I) {
 };
 
 
-void increase_counter()
-{
-    for(int j = 0; j<CRITICAL_SECTION_SIZE; j++){
-	val++;
-    }
-}
 
 void inc(mcs_lock &t, std::int64_t &val, int i) {
   for(int j=0;j<LOOP_COUNT;j++) {
@@ -215,7 +210,9 @@ qnode* I = new qnode;
 #endif
 
 #ifdef COUNTER
-    val++;
+    for(int j = 0; j<CRITICAL_SECTION_SIZE; j++){
+	val++;
+    }
 #endif
     t.unlock(&L, I);
 #ifdef TIME_ANALYSIS

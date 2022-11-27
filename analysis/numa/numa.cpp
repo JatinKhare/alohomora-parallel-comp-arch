@@ -1,6 +1,7 @@
 #include <benchmark/benchmark.h>
 #include <emmintrin.h>
 #include <atomic>
+#include <random>
 #include <cstdint>
 #include <iostream>
 #include <thread>
@@ -16,18 +17,16 @@
 #include <time.h>
 using namespace std::chrono;
 
-
-
 #define COUNTER
 //#define STACK_LIST
 
 #define CRITICAL_SECTION_SIZE 1
-#define LOOP_COUNT 1000000 
+#define LOOP_COUNT 1000
 
 //#define TIME_ANALYSIS
 
-#define ORIGINAL
-//#define BLOCKING_LOCK
+//#define ORIGINAL
+#define BLOCKING_LOCK
 //#define PAUSE_x86
 //#define SCHED_YIELD
 //#define ACTIVE_BACKOFF
@@ -112,8 +111,8 @@ cna_node_t * find_successor (cna_node_t *me)
 #define THRESHOLD (0xffff)
 int keep_lock_local ()
 {
-    //return pseudo_rand() & THRESHOLD;
-    return true;
+    return rand() & THRESHOLD;
+    //return true;
 }
 int cna_lock(cna_node_t** tail  , cna_node_t *me)
 {
@@ -235,6 +234,9 @@ void increase_counter()
     }
 }
 void cna_unlock(cna_node_t** tail , cna_node_t *me) {
+    #ifdef BLOCKING_LOCK
+	std::unique_lock<std::mutex> lock(Mutex);
+    #endif
     // Is there a successor in the main queue? 
     if (! me->next)
     {
@@ -263,7 +265,7 @@ void cna_unlock(cna_node_t** tail , cna_node_t *me) {
         }
         // Wait for successor to appear 
         while (me->next == NULL) {
-            asm("pause");
+            ;//asm("pause");
         }
     }
     //Determine the next lock holder and pass the lock by
@@ -272,10 +274,6 @@ void cna_unlock(cna_node_t** tail , cna_node_t *me) {
     if ( keep_lock_local () && (succ = find_successor (me)))
     {
         succ->spin = me->spin;
-        #ifdef BLOCKING_LOCK
-        cvar.notify_all();
-        //cvar.notify_one();
-        #endif
 }
 
     else if (me->spin > 1)
@@ -283,19 +281,15 @@ void cna_unlock(cna_node_t** tail , cna_node_t *me) {
         succ = (cna_node_t *)me->spin;
         succ->secTail->next = me->next;
         succ->spin = 1;
-        #ifdef BLOCKING_LOCK
-        cvar.notify_all();
-        //cvar.notify_one();
-        #endif
     }
     else
     {
         me->next->spin = 1;
+    }
         #ifdef BLOCKING_LOCK
         cvar.notify_all();
         //cvar.notify_one();
         #endif
-    }
 }
 
 void *lock_example(int i) { 
