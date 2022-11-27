@@ -20,17 +20,18 @@ using namespace std::chrono;
 //#define STACK_LIST
 
 #define CRITICAL_SECTION_SIZE 1
-#define LOOP_COUNT 1000000 
+#define LOOP_COUNT 100000 
 
 //#define TIME_ANALYSIS
 
 //#define ORIGINAL
-//#define BLOCKING_LOCK
+#define BLOCKING_LOCK
+#define BLOCKING_LOCK_1
 //#define PAUSE_x86
 //#define SCHED_YIELD
 //#define ACTIVE_BACKOFF
 //#define EXP_BACKOFF
-#define RANDOM_BACKOFF
+//#define RANDOM_BACKOFF
 
 #ifdef EXP_BACKOFF
 	#define MIN_BACKOFF 4
@@ -144,6 +145,9 @@ void my_lock(){
 }
 
 void my_unlock(){
+#ifdef BLOCKING_LOCK_1
+	std::unique_lock<std::mutex> lock(Mutex);
+#endif
   lock_flag.store(false);
 #ifdef BLOCKING_LOCK
   cvar.notify_all();
