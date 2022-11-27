@@ -10,9 +10,9 @@
 using namespace std;
 
 
-#define NUM_THREADS 4
-#define CRITICAL_SECTION_SIZE 10000
-#define LOOP_COUNT 100
+#define NUM_THREADS 128
+#define CRITICAL_SECTION_SIZE 1
+#define LOOP_COUNT 100000
 
 class Spinlock {
  private:
@@ -87,8 +87,8 @@ void os_scheduler() {
         if (th.joinable())
             th.join();
     	}
-	assert(a.val == NUM_THREADS*LOOP_COUNT*CRITICAL_SECTION_SIZE/2);
-	assert(b.val == NUM_THREADS*LOOP_COUNT*CRITICAL_SECTION_SIZE/2);
+	//assert(a.val == NUM_THREADS*LOOP_COUNT*CRITICAL_SECTION_SIZE/2);
+	//assert(b.val == NUM_THREADS*LOOP_COUNT*CRITICAL_SECTION_SIZE/2);
 }
 // Data sharing benchmark w/ OS scheduling
 static void osScheduling(benchmark::State& s) {
@@ -113,8 +113,8 @@ void thread_affinity() {
 	for (unsigned i = 0; i < NUM_THREADS; i++) {
 		cpu_set_t cpuset;
 		CPU_ZERO(&cpuset);
-		CPU_SET(index[i], &cpuset);
-		//CPU_SET(i%2, &cpuset);
+		//CPU_SET(index[i], &cpuset);
+		CPU_SET(i%2, &cpuset);
 
 		int rc = -1;
 		if(i%2){
@@ -140,8 +140,8 @@ void thread_affinity() {
         if (th.joinable())
             th.join();
     	}
-	assert(a.val == NUM_THREADS*LOOP_COUNT*CRITICAL_SECTION_SIZE/2);
-	assert(b.val == NUM_THREADS*LOOP_COUNT*CRITICAL_SECTION_SIZE/2);
+	//assert(a.val == NUM_THREADS*LOOP_COUNT*CRITICAL_SECTION_SIZE/2);
+	//assert(b.val == NUM_THREADS*LOOP_COUNT*CRITICAL_SECTION_SIZE/2);
 
 }	 
 
