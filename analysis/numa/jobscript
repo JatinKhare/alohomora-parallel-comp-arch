@@ -7,4 +7,4 @@
 #SBATCH -n 128
 #SBATCH -t 01:00:00
 
-./x86.sh numa_aw 1
+./numa 

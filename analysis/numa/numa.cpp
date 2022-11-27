@@ -29,7 +29,7 @@ using namespace std::chrono;
 #define BLOCKING_LOCK
 //#define PAUSE_x86
 //#define SCHED_YIELD
-//#define ACTIVE_BACKOFF
+#define ACTIVE_BACKOFF
 //#define EXP_BACKOFF
 //#define RANDOM_BACKOFF
 
@@ -71,9 +71,6 @@ int current_numa_node()
     int core = c & 0xFFF;
     return (chip);
 }
-//int main(){
-//cout<<"chip : "<<current_numa_node()<<"\n";
-//}
 
 
 cna_node_t * find_successor (cna_node_t *me)
@@ -264,9 +261,8 @@ void cna_unlock(cna_node_t** tail , cna_node_t *me) {
             }
         }
         // Wait for successor to appear 
-        while (me->next == NULL) {
+        while (me->next == NULL)
             ;//asm("pause");
-        }
     }
     //Determine the next lock holder and pass the lock by
     //setting its spin field 
@@ -274,7 +270,7 @@ void cna_unlock(cna_node_t** tail , cna_node_t *me) {
     if ( keep_lock_local () && (succ = find_successor (me)))
     {
         succ->spin = me->spin;
-}
+	}
 
     else if (me->spin > 1)
     {
@@ -283,9 +279,8 @@ void cna_unlock(cna_node_t** tail , cna_node_t *me) {
         succ->spin = 1;
     }
     else
-    {
         me->next->spin = 1;
-    }
+
         #ifdef BLOCKING_LOCK
         cvar.notify_all();
         //cvar.notify_one();
