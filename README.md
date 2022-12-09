@@ -4,7 +4,7 @@ Jatin, Shreyas, Shruti
 
 **Guys, I love you :")**
 
-#Motivation
+# Motivation
 
 Extracting performance from present day’s multi-core systems is a very challenging task. One of the major difficulties that arise are due to synchronization. Synchronization is used to guarantee correctness, but it also forces parts of the code to be serialized. In this project, we present a comprehensive study of various mutual exclusion techniques.
 
